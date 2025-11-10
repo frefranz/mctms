@@ -1,11 +1,10 @@
-#include <Arduino.h>
 
-// **********************************************************
-// *                                                        *
-// * Lässt auf einem Arduino Uno eine an Pin 13 und GND an- *
-// * geschlossene LED blinken                    2025-11-06 *
-// *                                                        *
-// **********************************************************
+// ***********************************************************
+// *                                                         *
+// * Laesst auf einem Arduino Uno eine an Pin 13 und GND an- *
+// * geschlossene LED blinken                     2025-11-06 *
+// *                                                         *
+// ***************************************************+*******
 
 // My Arduino Uno Board: eine gelbe LED auf dem Board blinkt mit,
 // offensichtlich ebenfalls an Pin 13 angeschlossen
@@ -22,7 +21,7 @@ void setup()
 void loop()
 {
   digitalWrite(ledPin1, HIGH);
-  delay(100);
+  delay(500);
   digitalWrite(ledPin1, LOW);
-  delay(100);
+  delay(500);
 }
