@@ -4,7 +4,7 @@
 // * Laesst auf einem Arduino Uno eine an Pin 13 und GND an- *
 // * geschlossene LED blinken                     2025-11-06 *
 // *                                                         *
-// ***************************************************+*******
+// ***********************************************************
 
 // My Arduino Uno Board: eine gelbe LED auf dem Board blinkt mit,
 // offensichtlich ebenfalls an Pin 13 angeschlossen
@@ -21,7 +21,7 @@ void setup()
 void loop()
 {
   digitalWrite(ledPin1, HIGH);
-  delay(500);
+  delay(700);
   digitalWrite(ledPin1, LOW);
-  delay(500);
+  delay(700);
 }
