@@ -1,17 +1,15 @@
 
-// ***********************************************************
-// *                                                         *
-// * Laesst auf einem Arduino Uno eine an Pin 13 und GND an- *
-// * geschlossene LED blinken                     2025-11-29 *
-// *                                                         *
-// ***********************************************************
+// ************************************************************
+// *                                                          *
+// * Laesst auf einem Arduino Nano eine an Pin 13 und GND an- *
+// * geschlossene LED blinken                      2025-11-29 *
+// *                                                          *
+// ************************************************************
 
-// My Arduino Uno Board: eine gelbe LED auf dem Board blinkt mit,
-// offensichtlich ebenfalls an Pin 13 angeschlossen
 
 #include <Arduino.h>
 
-int ledPin1 = 13; // LED an digitalen Pin 13 angeschlossen
+int ledPin1 = 13; // on-board red LED, angeschlossen an Pin 13
 
 void setup()
 {
