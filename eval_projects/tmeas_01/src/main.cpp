@@ -5,8 +5,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-// Data wire is plugged into port 2 on the Arduino
-#define ONE_WIRE_BUS 2
+// Data wire is plugged into port 14 on the Arduino (changed from 2 to 14 so the LCD display can run in parallel)
+#define ONE_WIRE_BUS 14
 
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWire(ONE_WIRE_BUS);
