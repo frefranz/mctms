@@ -1,3 +1,6 @@
+# When working with a MacBook
+*.DS_Store
+
 # Prerequisites
 *.d
 
