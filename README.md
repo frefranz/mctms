@@ -1,2 +1,2 @@
 # mctms
-Multichannel temperature measurement system based on Arduino hardware.
+Multichannel temperature measurement system based on small low-level microcontroller boards.
