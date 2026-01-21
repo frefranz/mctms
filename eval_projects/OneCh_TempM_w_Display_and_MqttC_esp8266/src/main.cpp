@@ -23,13 +23,15 @@
 #include <PubSubClient.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 // Credentials and sensitive data handling:
 //   copy secrets_template.h to secrets.h and fill in your WiFi and MQTT credentials  -or-
 //   outcomment include.h, remove comment at secrets_template.h to be able to compile on the spot
 //   Note: secrets.h not seen publicly as it contains sensitive data (protected by .gitignore)
-// #include "../include/secrets_template.h"
-#include "../include/secrets.h"
+#include "../include/secrets_template.h"
+// #include "../include/secrets.h"
 
 // Set LCD I2C address and number of display columns and rows
 LiquidCrystal_I2C lcd(0x27, 16, 4);  // set the LCD address to 0x27 for the 16 chars and 4 line display
@@ -46,6 +48,8 @@ long lastMsg = 0;
 float temp = 0;
 int inPin = 5;
 IPAddress mqtt_ip;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 0, 60000); // UTC offset 0, update every 60s
 
 void setup_wifi() {
   delay(10);
@@ -106,6 +110,8 @@ void setup()
   Serial.begin(9600);
   setup_wifi(); 
   client.setServer(mqtt_server, 1883);
+  timeClient.begin();  // Initialize NTP
+  timeClient.update(); // Get initial time
 
   // // Start LCD
   // lcd.init();
@@ -157,7 +163,10 @@ void loop()
     Serial.println(temp);
     if((temp > -20) && (temp <60))
       {
-      client.publish("ha/_temperature1", String(temp).c_str(), true);
+      timeClient.update(); // Ensure time is current
+      String timestamp = timeClient.getFormattedTime(); // HH:MM:SS format
+      String payload = timestamp + " " + String(temp);
+      client.publish("ha/_temperature1", payload.c_str(), true);
       }
   }
 }
