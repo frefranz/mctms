@@ -21,11 +21,14 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+// Define I2C pins for ESP8266  (Default: I2C_SDA_PIN = GPIO4, I2C_SCL_PIN = GPIO5)
+#define I2C_SDA_PIN 12 // GPIO 12, Pin D6
+#define I2C_SCL_PIN 14 // GPIO 14, Pin D5
+
 LiquidCrystal_I2C lcd(0x27, 16, 4);  // set the LCD address to 0x27 for the 16 chars and 4 line display
 
-
 // oneWire instance pin (not limited to Maxim/Dallas temperature ICs
-OneWire oneWire(D0);
+OneWire oneWire(D1);
 
 // Pass our oneWire reference to Dallas Temperature.
 DallasTemperature sensors(&oneWire);
@@ -33,6 +36,7 @@ DallasTemperature sensors(&oneWire);
 void setup()
 {
   // Start LCD
+  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   lcd.init();
   lcd.clear();
   lcd.backlight();                  // Make sure backlight is on
