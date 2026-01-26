@@ -30,14 +30,14 @@
 //   copy secrets_template.h to secrets.h and fill in your WiFi and MQTT credentials  -or-
 //   outcomment include.h, remove comment at secrets_template.h to be able to compile on the spot
 //   Note: secrets.h not seen publicly as it contains sensitive data (protected by .gitignore)
-#include "../include/secrets_template.h"
-// #include "../include/secrets.h"
+//#include "../include/secrets_template.h"
+#include "../include/secrets.h"
 
 // Set LCD I2C address and number of display columns and rows
 LiquidCrystal_I2C lcd(0x27, 16, 4);  // set the LCD address to 0x27 for the 16 chars and 4 line display
 
-// oneWire instance pin (not limited to Maxim/Dallas temperature ICs
-OneWire oneWire(D0);
+// oneWire instance pin (not limited to Maxim/Dallas temperature ICs)
+OneWire oneWire(D1);
 
 // Pass our oneWire reference to Dallas Temperature.
 DallasTemperature sensors(&oneWire);
@@ -78,13 +78,13 @@ void setup_wifi() {
   }
 
   Serial.print("Pinging MQTT broker at ");
-  Serial.println(mqtt_server);
-  if (WiFi.hostByName(mqtt_server, mqtt_ip)) {
-    Serial.print("Broker found at IP: ");
-    Serial.println(mqtt_ip);
-  } else {
-    Serial.println("Cannot resolve broker address");
-  }
+  // Serial.println(mqtt_server);
+  // if (WiFi.hostByName(mqtt_server, mqtt_ip)) {
+  //   Serial.print("Broker found at IP: ");
+  //   Serial.println(mqtt_ip);
+  // } else {
+  //   Serial.println("Cannot resolve broker address");
+  // }
 }
 
 void reconnect() {
@@ -152,14 +152,15 @@ void loop()
   if (!client.connected()) {
     reconnect();
   }
-  client.loop();
+  client.loop();    // maintain the MQTT connection and process incoming messages
 
   long now = millis();
   if (now - lastMsg > 5000) {
     lastMsg = now;
-    sensors.setResolution(12);
+    // sensors.setResolution(12);
     sensors.requestTemperatures(); // Send the command to get temperatures
     temp = sensors.getTempCByIndex(0);
+    // temp = 33;
     Serial.println(temp);
     if((temp > -20) && (temp <60))
       {
