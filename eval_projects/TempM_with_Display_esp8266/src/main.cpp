@@ -39,11 +39,11 @@ void setup()
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   lcd.init();
   lcd.clear();
-  lcd.backlight();                  // Make sure backlight is on
-  lcd.begin(20, 4);                 // Initialize LCD (20 columns by 4 rows)
-  lcd.print("Temperature Readout"); // Print a message to the LCD, row 0
-  lcd.setCursor(0, 1);              // Set cursor to column 0, row 1
-  lcd.print("Demovers. 2026-01-27");
+  lcd.backlight();                    // Make sure backlight is on
+  lcd.begin(20, 4);                   // Initialize LCD (20 columns by 4 rows)
+  lcd.print("ReadTemp. 2026-01-27");  // Print a message to the LCD, row 0
+  lcd.setCursor(0, 1);                // Set cursor to column 0, row 1
+  lcd.print("--------------------");
 
   // Start up the sensor library
   sensors.begin();
@@ -51,30 +51,29 @@ void setup()
 
 void loop()
 {
-  // Request temperature reading from all sensors
-  sensors.requestTemperatures();
+  // Continuous measurement loop
+  while (true) {
+    // Request temperature reading from all sensors
+    sensors.requestTemperatures();
 
-  // Read and display Sensor 0
-  lcd.setCursor(0, 2);
-  lcd.print("Sensor 00: ");
-  float tempC1 = sensors.getTempCByIndex(0);
-  if (tempC1 != DEVICE_DISCONNECTED_C) {
-    lcd.print(tempC1);
-    lcd.print(" \xDF" "C");
-  }
-  else {
-    lcd.print("----- \xDF" "C");
-  }
+    // Loop through each sensor
+    for (int i = 0; i < 2; i++) {
+      lcd.setCursor(0, 2 + i);
+      lcd.print("Sensor 0");
+      lcd.print(i);
+      lcd.print(": ");
+      
+      float tempC = sensors.getTempCByIndex(i);
+      if (tempC != DEVICE_DISCONNECTED_C) {
+        lcd.print(tempC);
+        lcd.print(" \xDF" "C");
+      }
+      else {
+        lcd.print("----- \xDF" "C");
+      }
+    }
 
-  // Read and display Sensor 1
-  lcd.setCursor(0, 3);
-  lcd.print("Sensor 01: ");
-  float tempC2 = sensors.getTempCByIndex(1);
-  if (tempC2 != DEVICE_DISCONNECTED_C) {
-    lcd.print(tempC2);
-    lcd.print(" \xDF" "C");
-  }
-  else {
-    lcd.print("----- \xDF" "C");
+    // Wait 2 seconds before next measurement
+    delay(2000);
   }
 }
