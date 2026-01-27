@@ -27,7 +27,7 @@
 
 LiquidCrystal_I2C lcd(0x27, 16, 4);  // set the LCD address to 0x27 for the 16 chars and 4 line display
 
-// oneWire instance pin (not limited to Maxim/Dallas temperature ICs
+// oneWire instance pin (not limited to Maxim/Dallas temperature ICs)
 OneWire oneWire(D1);
 
 // Pass our oneWire reference to Dallas Temperature.
@@ -43,9 +43,7 @@ void setup()
   lcd.begin(20, 4);                 // Initialize LCD (20 columns by 4 rows)
   lcd.print("Temperature Readout"); // Print a message to the LCD, row 0
   lcd.setCursor(0, 1);              // Set cursor to column 0, row 1
-  lcd.print("Demovers. 2026-01-12");
-  lcd.setCursor(0, 2);              // Set cursor to column 0, row 2
-  lcd.print("--------------------");
+  lcd.print("Demovers. 2026-01-27");
 
   // Start up the sensor library
   sensors.begin();
@@ -56,15 +54,27 @@ void loop()
   // Request temperature reading from all sensors
   sensors.requestTemperatures();
 
-  // Print sensor number, read sensor, check data and print temperature value (or error message)
-  lcd.setCursor(0, 3); // start at column 0, row 3
+  // Read and display Sensor 0
+  lcd.setCursor(0, 2);
   lcd.print("Sensor 00: ");
-  float tempC = sensors.getTempCByIndex(0);
-  if (tempC != DEVICE_DISCONNECTED_C) {
-    lcd.print(tempC);
+  float tempC1 = sensors.getTempCByIndex(0);
+  if (tempC1 != DEVICE_DISCONNECTED_C) {
+    lcd.print(tempC1);
     lcd.print(" \xDF" "C");
   }
   else {
-    lcd.print("Read-Err");
+    lcd.print("----- \xDF" "C");
+  }
+
+  // Read and display Sensor 1
+  lcd.setCursor(0, 3);
+  lcd.print("Sensor 01: ");
+  float tempC2 = sensors.getTempCByIndex(1);
+  if (tempC2 != DEVICE_DISCONNECTED_C) {
+    lcd.print(tempC2);
+    lcd.print(" \xDF" "C");
+  }
+  else {
+    lcd.print("----- \xDF" "C");
   }
 }
