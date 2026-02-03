@@ -8,6 +8,10 @@ from datetime import datetime
 
 import paho.mqtt.client as mqtt
 
+number_of_temperature_sensors = 3  # ts0, ts1, ...
+number_of_one_wire_buses = 1       # owb0, owb1, ...
+
+
 class SBCModel:
     def __init__(self, name, broker_host='127.0.0.1', broker_port=1883, publish_interval=2.0, cycle_seconds=20.0):
         self.name = name  # e.g. "sbc0"
@@ -15,11 +19,11 @@ class SBCModel:
         self.broker_port = broker_port
         self.publish_interval = publish_interval
         self.cycle_seconds = cycle_seconds
-
-        self.client = mqtt.Client(client_id=f"{self.name}-sim")
+        self.client = mqtt.Client(client_id=f"{self.name}-sim", callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
         self.client_connected = threading.Event()
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
+
 
         # Prepare waveform steps for triangular wave between 0.0 and 0.4
         self.steps = max(2, int(round(self.cycle_seconds / self.publish_interval)))
@@ -36,14 +40,14 @@ class SBCModel:
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._publish_loop, daemon=True)
 
-    def _on_connect(self, client, userdata, flags, rc):
+    def _on_connect(self, client, userdata, flags, rc, properties=None):
         # rc == 0 means success
         if rc == 0:
             self.client_connected.set()
         else:
             print(f"{self.name}: connect failed rc={rc}")
 
-    def _on_disconnect(self, client, userdata, rc):
+    def _on_disconnect(self, client, userdata, rc, properties=None):
         self.client_connected.clear()
 
     def start(self):
@@ -70,20 +74,21 @@ class SBCModel:
         # build a dict with keys "sbcX/owbY/tsZ" for owb0 and owb1, ts0..ts7
         amp = self.amps[self.step_idx % len(self.amps)]
         payload = {}
-        for owb in (0, 1):
-            for ts in range(8):
+        for owb in range(number_of_one_wire_buses):
+            for ts in range(number_of_temperature_sensors):
                 topic_key = f"{self.name}/owb{owb}/ts{ts}"
-                # value = base (ts) + small oscillation (amp)
+                # value = base (ts) + small oscillation (amp), rounded to 3 decimals
                 value = round(ts + amp, 3)
-                payload[topic_key] = value
+                # formatted with 5 total digits, 2 decimals left and right of decimal point, padded with zeros
+                payload[topic_key] = f"{value:05.2f}"
         return payload
 
     def _publish_loop(self):
         while not self._stop.is_set():
             payload = self._generate_payload()
             topic = f"{self.name}/measurements"
-            # include timestamp in payload
-            envelope = {"timestamp": datetime.utcnow().isoformat() + "Z", **payload}
+            # changed: no timestamp! # include timestamp in payload
+            envelope = {**payload}
             body = json.dumps(envelope)
             try:
                 # publish QoS 0
@@ -104,19 +109,19 @@ def main():
     args = parser.parse_args()
 
     sbc0 = SBCModel("sbc0", broker_host=args.broker, broker_port=args.port, publish_interval=args.interval)
-    sbc1 = SBCModel("sbc1", broker_host=args.broker, broker_port=args.port, publish_interval=args.interval)
+    # sbc1 = SBCModel("sbc1", broker_host=args.broker, broker_port=args.port, publish_interval=args.interval)
 
     def handle_stop(signum, frame):
         print("shutdown signal received, stopping sbc models...")
         sbc0.stop()
-        sbc1.stop()
+        #sbc1.stop()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, handle_stop)
     signal.signal(signal.SIGTERM, handle_stop)
 
     sbc0.start()
-    sbc1.start()
+    #sbc1.start()
 
     # keep main thread alive while workers run
     try:

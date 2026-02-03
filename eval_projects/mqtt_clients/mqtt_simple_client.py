@@ -23,7 +23,7 @@
 import paho.mqtt.client as mqtt
 
 # Create a client instance
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
 # Connect to the broker
 client.connect("192.168.2.32", 1883, 60)

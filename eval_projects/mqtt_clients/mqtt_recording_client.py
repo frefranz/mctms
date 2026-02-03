@@ -13,7 +13,8 @@ import os
 # Configuration
 BROKER_ADDRESS = "192.168.2.32"
 BROKER_PORT = 1883
-SUBSCRIBE_TOPIC = "sbc0/+/+/#"  # Wildcard for all temperature sensors
+SUBSCRIBE_TOPIC = "sbc0/measurements"  # Wildcard for all temperature sensors
+#SUBSCRIBE_TOPIC = "#"  # Wildcard for all temperature sensors
 OUTPUT_FILE = "temperature_data.jsonl"
 
 # Global variables
@@ -37,19 +38,19 @@ def signal_handler(sig, frame):
     print("Data saved. Exiting.")
     sys.exit(0)
 
-def on_connect(client, userdata, connect_flags, reason_code, properties):
+def on_connect(client, userdata, flags, rc, properties=None):
     """Callback when client connects to broker"""
-    if reason_code == 0:
+    if rc == 0:
         print(f"Connected to broker at {BROKER_ADDRESS}")
         client.subscribe(SUBSCRIBE_TOPIC)
     else:
-        print(f"Connection failed with code {reason_code}")
+        print(f"Connection failed with code {rc}")
 
 def on_message(client, userdata, msg):
     """Callback when message is received"""
     try:
         topic = msg.topic
-        payload = float(msg.payload.decode())
+        payload = (msg.payload.decode())
         
         # Store reading with topic as key
         sensor_readings[topic] = payload
@@ -57,8 +58,8 @@ def on_message(client, userdata, msg):
         print(f"Received: {topic} = {payload}°C")
         
         # Write to file when we have all 32 sensors (adjust count as needed)
-        if len(sensor_readings) >= 32:
-            write_record()
+        #if len(sensor_readings) >= 3:
+        write_record()
             
     except ValueError:
         print(f"Invalid payload on {msg.topic}: {msg.payload}")
@@ -77,16 +78,16 @@ def write_record():
     except IOError as e:
         print(f"Error writing to file: {e}")
 
-def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
+def on_disconnect(client, userdata, rc, properties=None):
     """Callback when client disconnects"""
-    print(f"Disconnected from broker (code: {reason_code})")
+    print(f"Disconnected from broker (code: {rc})")
 
 # Register signal handlers
 signal.signal(signal.SIGTERM, signal_handler)  # kill -SIGTERM
 signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
 
 # Create client instance
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
 # Assign callbacks
 client.on_connect = on_connect

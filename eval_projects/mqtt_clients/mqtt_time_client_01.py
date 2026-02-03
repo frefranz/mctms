@@ -24,7 +24,7 @@ def on_message(client, userdata, msg):
         print(f"Empfangener Timestamp: {msg.payload.decode()}")
 
 # MQTT Client initialisieren
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
 # Callback setzen
 client.on_message = on_message

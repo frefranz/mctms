@@ -20,7 +20,7 @@ def on_message(client, userdata, msg):
 # Hauptfunktion
 def main():
     # MQTT-Client erstellen
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
     # Callback für empfangene Nachrichten setzen
     client.on_message = on_message
