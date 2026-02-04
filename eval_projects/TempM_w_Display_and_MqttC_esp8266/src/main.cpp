@@ -2,8 +2,8 @@
   Temperature measurement prototype based on ESP3266 and DS18B20 sensor with LCD-Matrix display
 
   Hardware:
-  - ESP3266 microcontroller board (NodeMCU)
-  - 20x4 LCD-Matrix display with I2C interface (2nd PCB located under the display)
+  - ESP8266 microcontroller board (NodeMCU)
+  - 20x4 LCD-Matrix display with I2C interface (I2C via 2nd PCB located under the lcd display)
   - DS18B20, one wire temperature sensor
 
   Firmware:
@@ -30,8 +30,9 @@
 //   copy secrets_template.h to secrets.h and fill in your WiFi and MQTT credentials  -or-
 //   outcomment include.h, remove comment at secrets_template.h to be able to compile on the spot
 //   Note: secrets.h not seen publicly as it contains sensitive data (protected by .gitignore)
-//#include "../include/secrets_template.h"
-#include "../include/secrets.h"
+//
+#include "../include/secrets_template.h"
+//#include "../include/secrets.h"
 
 // Set LCD I2C address and number of display columns and rows
 LiquidCrystal_I2C lcd(0x27, 16, 4);  // set the LCD address to 0x27 for the 16 chars and 4 line display
