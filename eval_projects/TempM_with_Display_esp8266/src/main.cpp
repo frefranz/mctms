@@ -1,6 +1,21 @@
 
+
+/* My Sensor Mapping Notes (copy to knownSensors[] and knownNames[] in main.cpp):
+Sensor auf Pfostenleiste
+ROM addr MSB to LSB:
+0x71,0x00,0x00,0x00, 0x9F,0x67,0xEC,0x28
+
+Sensor direkt verbunden:
+ROM addr MSB to LSB:
+0x9F,0x00,0x00,0x00,0x9F,0x08,0xD0,0x28
+
+Sensor am Kabel:
+ROM addr MSB to LSB:
+0xA6,0x00,0x00,0x00, 0x6E,0x44,0x2C,0x28
+*/
+
 /*
-Fixed mapping of a sensor-index to a physical sensor
+Mapping of a sensor-index to a physical sensor
 
 Finding:
 The current code reads temperatures by index and can't guarantee a fixed mapping to a physical sensor.
@@ -140,51 +155,52 @@ void displayAddressLines(const DeviceAddress addr) {
   lcd.setCursor(0, 3); lcd.print(line);
 }
 
-// Identification mode: runs while ID_PIN is pulled to GND. Hot-plug capable.
+// Identification mode: once entered, runs until reset.
 void identificationMode() {
-  while (digitalRead(ID_PIN) == LOW) {
+  Serial.println("Entering Sensor ID Mode until powerdown/reset");
+  Serial.println("Copy the ROM codes for each sensor into knownSensors[] and re-flash");
+  while (true) {
+    sensors.begin();
+    delay(300);
     uint8_t devCount = sensors.getDeviceCount();
-    lcd.clear();
-
     if (devCount == 0) {
       // No sensor
-      lcd.setCursor(0, 0); lcd.print("Error:");
-      lcd.setCursor(0, 1); lcd.print("No Sensor connected");
-
-      Serial.println("Error:");
-      Serial.println("No Sensor connected");
+      lcd.setCursor(0, 0); lcd.print("-- Sensor ID Mode --");
+      lcd.setCursor(0, 1); lcd.print("Error:              ");
+      lcd.setCursor(0, 2); lcd.print("No Sensor connected ");
+      lcd.setCursor(0, 3); lcd.print("                    ");
+      Serial.println("Error: No Sensor connected");
     }
     else if (devCount > 1) {
       // Too many sensors
-      lcd.setCursor(0, 0); lcd.print("Error:");
-      lcd.setCursor(0, 1); lcd.print("More than one");
-      lcd.setCursor(0, 2); lcd.print("sensor connected");
-
-      Serial.println("Error:");
-      Serial.println("More than one");
-      Serial.println("sensor connected");
+      lcd.setCursor(0, 0); lcd.print("-- Sensor ID Mode --");
+      lcd.setCursor(0, 1); lcd.print("Error:              ");
+      lcd.setCursor(0, 2); lcd.print("More than one       ");
+      lcd.setCursor(0, 3); lcd.print("sensor connected    ");
+      Serial.println("Error: More than one sensor connected");
     }
     else {
       // Exactly one sensor connected
       DeviceAddress addr;
       if (sensors.getAddress(addr, 0)) {
-        lcd.setCursor(0, 0); lcd.print("Sensor connected");
+        lcd.setCursor(0, 0); lcd.print("-- Sensor ID Mode --");
         lcd.setCursor(0, 1); lcd.print("ROM addr MSB to LSB:");
         displayAddressLines(addr);
 
-        Serial.println("Sensor connected");
-        Serial.println("ROM addr MSB to LSB:");
+        Serial.println("Sensor connected, ROM addr MSB to LSB:");
         char line[64];
-        snprintf(line, sizeof(line), "0x%02X,0x%02X,0x%02X,0x%02X", addr[7], addr[6], addr[5], addr[4]); Serial.println(line);
-        snprintf(line, sizeof(line), "0x%02X,0x%02X,0x%02X,0x%02X", addr[3], addr[2], addr[1], addr[0]); Serial.println(line);
+        snprintf(line, sizeof(line), "0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X", \
+          addr[7], addr[6], addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]); Serial.println(line);
       } else {
-        lcd.setCursor(0,0); lcd.print("Error:");
-        lcd.setCursor(0,1); lcd.print("Read address fail");
-        Serial.println("Error: Read address fail");
+        lcd.setCursor(0, 0); lcd.print("-- Sensor ID Mode --");
+        lcd.setCursor(0, 1); lcd.print("Error:              ");
+        lcd.setCursor(0, 1); lcd.print("Addr. reading failed");
+        lcd.setCursor(0, 3); lcd.print("                    ");
+        Serial.println("Error: Address reading failed");
       }
     }
 
-    delay(500); // small debounce / update interval
+    delay(5000); // delay to allow sensor hot-plugging, allow some time to read the display/serial output.
   }
 
   // exiting identification mode - restore header
@@ -211,28 +227,11 @@ void setup()
   lcd.setCursor(0, 1);                // Set cursor to column 0, row 1
   lcd.print("--------------------");
 
+  // Configure identification-mode jumper pin (INPUT_PULLUP). Pull to GND to enable identification mode
+  pinMode(ID_PIN, INPUT_PULLUP);
+  
   // Start up the sensor library
   sensors.begin();
-
-  // Configure identification jumper pin (INPUT_PULLUP). Pull to GND to enable identification mode
-  pinMode(ID_PIN, INPUT_PULLUP);
-
-  // Discover connected sensors and print their ROMs so you can copy
-  // them into the `knownSensors[]` array above to lock sensors to slots.
-  Serial.println();
-  Serial.println("--- DS18B20 sensor discovery ---");
-  uint8_t devCount = sensors.getDeviceCount();
-  Serial.print("Detected devices: "); Serial.println(devCount);
-  for (uint8_t i = 0; i < devCount; i++) {
-    DeviceAddress addr;
-    if (sensors.getAddress(addr, i)) {
-      Serial.print("Index "); Serial.print(i);
-      Serial.print(" -> ");
-      printAddress(addr);
-      Serial.println();
-    }
-  }
-  Serial.println("Copy the ROM codes above into knownSensors[] and re-flash to lock names to physical sensors.");
 }
 
 void loop()
@@ -242,7 +241,7 @@ void loop()
     // If the ID jumper is pulled to ground, enter identification mode loop
     if (digitalRead(ID_PIN) == LOW) {
       identificationMode();
-      // After exiting, continue to measurement loop
+      // never reached as identificationMode() loops forever until reset
     }
 
     // Normal measurement operation
