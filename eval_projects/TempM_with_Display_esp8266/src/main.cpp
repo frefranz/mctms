@@ -3,15 +3,15 @@
 /* My Sensor Mapping Notes (copy to knownSensors[] and knownNames[] in main.cpp):
 Sensor auf Pfostenleiste
 ROM addr MSB to LSB:
-0x71,0x00,0x00,0x00, 0x9F,0x67,0xEC,0x28
+0x28,0xEC,0x67,0x9F,0x00,0x00,0x00,0x71
 
 Sensor direkt verbunden:
 ROM addr MSB to LSB:
-0x9F,0x00,0x00,0x00,0x9F,0x08,0xD0,0x28
+0x28,0xD0,0x08,0x9F,0x00,0x00,0x00,0x9F
 
 Sensor am Kabel:
 ROM addr MSB to LSB:
-0xA6,0x00,0x00,0x00, 0x6E,0x44,0x2C,0x28
+0x28,0x2C,0x44,0x6E,0x00,0x00,0x00,0xA6
 */
 
 /*
@@ -104,15 +104,13 @@ DallasTemperature sensors(&oneWire);
 
 // ------------------------------------------------------------------
 // Configure known/expected sensors by their 8-byte ROM codes (one-wire ID)
-// Replace the 0x00 entries with the actual ROM bytes shown by the serial
-// discovery below. Example format:
-// {0x28, 0xFF, 0x4C, 0x3C, 0x92, 0x16, 0x03, 0x4F}
-// Fill the corresponding name in `knownNames` so you can refer to slots
-// consistently by index.
+// Replace the 0x00 entries with the actual ROM bytes shown by identificationMode.
+// Example format: {0x28, 0xFF, 0x4C, 0x3C, 0x92, 0x16, 0x03, 0x4F}
+// Fill the corresponding name in `knownNames` so a slot can get consistently referred to by index.
 DeviceAddress knownSensors[] = {
-  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 0 - replace with ROM for "sensor 0"
-  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 1 - replace with ROM for "sensor 1"
-  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 2 - replace with ROM for "sensor 2"
+  {0x28,0xD0,0x08,0x9F,0x00,0x00,0x00,0x9F}, // slot 0 - Indoor Sensor 0  (Sensor directly connected)
+  {0x28,0xEC,0x67,0x9F,0x00,0x00,0x00,0x71}, // slot 1 - Indoor Sensor 1  (Sensor on pin header)
+  {0x28,0x2C,0x44,0x6E,0x00,0x00,0x00,0xA6}, // slot 2 - Outdoor Sensor 0 (Sensor with cable)
   {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 3 - replace with ROM for "sensor 3"
   {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 4 - replace with ROM for "sensor 4"
   {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 5 - replace with ROM for "sensor 5"
@@ -120,10 +118,14 @@ DeviceAddress knownSensors[] = {
   {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}  // slot 7 - replace with ROM for "sensor 7"
 };
 
+// 0x71,0x00,0x00,0x00,0x9F,0x67,0xEC,0x28 --> 0x28,0xEC,0x67,0x9F,0x00,0x00,0x00,0x71
+// 0x9F,0x00,0x00,0x00,0x9F,0x08,0xD0,0x28 --> 0x28,0xD0,0x08,0x9F,0x00,0x00,0x00,0x9F
+// 0xA6,0x00,0x00,0x00,0x6E,0x44,0x2C,0x28 --> 0x28,0x2C,0x44,0x6E,0x00,0x00,0x00,0xA6
+
 const char* knownNames[] = {
-  "Indoor",     // friendly name for slot 0
-  "Outdoor",    // friendly name for slot 1
-  "",           // friendly name for slot 2    
+  "I0",         // friendly name for slot 0
+  "I1",         // friendly name for slot 1
+  "O0",         // friendly name for slot 2    
   "",           // friendly name for slot 3
   "",           // friendly name for slot 4
   "",           // friendly name for slot 5
@@ -149,9 +151,9 @@ void printAddress(const DeviceAddress deviceAddress) {
 // Display the ROM address on the two lower LCD lines as 4 bytes per line
 void displayAddressLines(const DeviceAddress addr) {
   char line[21];
-  snprintf(line, sizeof(line), "0x%02X,0x%02X,0x%02X,0x%02X", addr[7], addr[6], addr[5], addr[4]); // MSB..mid
+  snprintf(line, sizeof(line), "0x%02X,0x%02X,0x%02X,0x%02X", addr[0], addr[1], addr[2], addr[3]); // MSB..mid
   lcd.setCursor(0, 2); lcd.print(line);
-  snprintf(line, sizeof(line), "0x%02X,0x%02X,0x%02X,0x%02X", addr[3], addr[2], addr[1], addr[0]); // mid..LSB
+  snprintf(line, sizeof(line), "0x%02X,0x%02X,0x%02X,0x%02X", addr[4], addr[5], addr[6], addr[7]); // mid..LSB
   lcd.setCursor(0, 3); lcd.print(line);
 }
 
@@ -202,13 +204,6 @@ void identificationMode() {
 
     delay(5000); // delay to allow sensor hot-plugging, allow some time to read the display/serial output.
   }
-
-  // exiting identification mode - restore header
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("ReadTemp. 2026-01-27");
-  lcd.setCursor(0, 1);
-  lcd.print("--------------------");
 }
 
 void setup()
@@ -217,92 +212,104 @@ void setup()
   Serial.begin(115200);
   delay(50);
 
-  // Start LCD
+  // Configure identification-mode jumper pin (INPUT_PULLUP). Pull to GND to enable identification mode
+  pinMode(ID_PIN, INPUT_PULLUP);
+  
+  // Start the LCD
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   lcd.init();
   lcd.clear();
   lcd.backlight();                    // Make sure backlight is on
-  lcd.begin(20, 4);                   // Initialize LCD (20 columns by 4 rows)
-  lcd.print("ReadTemp. 2026-01-27");  // Print a message to the LCD, row 0
-  lcd.setCursor(0, 1);                // Set cursor to column 0, row 1
-  lcd.print("--------------------");
-
-  // Configure identification-mode jumper pin (INPUT_PULLUP). Pull to GND to enable identification mode
-  pinMode(ID_PIN, INPUT_PULLUP);
+  lcd.begin(20, 4);                   // Init LCD (20 col. by 4 rows), cursor is at top-left
   
   // Start up the sensor library
   sensors.begin();
+  delay(50);
+
+  // Enter identification mode if identification-mode jumper is pulled to ground
+  if (digitalRead(ID_PIN) == LOW) {
+    identificationMode();
+    // never reached as identificationMode loops forever until reset
+  }
+
+  lcd.print("ReadTemp. 2026-02-11");  // Line 0: print a message to the LCD
+  lcd.setCursor(0, 1);                // Set cursor to column 0, row 1
+  lcd.print("--------------------");  // Line 1: print a separator line
+
 }
 
 void loop()
 {
-  // Main control loop - allow entering identification mode via jumper.
-  while (true) {
-    // If the ID jumper is pulled to ground, enter identification mode loop
-    if (digitalRead(ID_PIN) == LOW) {
-      identificationMode();
-      // never reached as identificationMode() loops forever until reset
+  sensors.requestTemperatures();
+
+  // Loop through each configured (known) sensor slot
+  for (size_t i = 0; i < KNOWN_SENSORS; i++) {
+    float tempC = DEVICE_DISCONNECTED_C;
+    bool configured = !isAddressZero(knownSensors[i]);
+
+    // If configured and physically present, read by ROM address
+    if (configured) {
+      if (sensors.isConnected(knownSensors[i])) {
+        tempC = sensors.getTempC(knownSensors[i]);
+      }
     }
 
-    // Normal measurement operation
-    sensors.requestTemperatures();
+    // Update LCD: only show the first four configured slots on the remaining 2 display lines
+    //
+    // Slots are defined by their position within a line, each slot has 10 digits like:
+    // |1234567890|1234567890|
+    // +---------------------+
+    // !--SLOT 0--!--SLOT 1--!
+    // !--SLOT 2--!--SLOT 3--!
+    // +---------------------+
+    // 
+    // Within each slot, the following info is shown:
+    // |1234567890|  xy: any twe characters naming a sensor, from 0..9, A..Z, a..z. xy = "--" means sensor not configured
+    // |xy: tt.tt |  tt.tt: temperature with two decimals, "--.--" means sensor disconnected, no value readeable
 
-    // Loop through each configured (known) sensor slot
-    for (size_t i = 0; i < KNOWN_SENSORS; i++) {
-      float tempC = DEVICE_DISCONNECTED_C;
-      bool configured = !isAddressZero(knownSensors[i]);
+    if (i < 4) { // only show the first slots on the LCD, configured or not. All eight slots are only logged to Serial.
+      if (i == 0) {
+        // Line 2: show slots 0 and 1
+        lcd.setCursor(0, 2);
+        lcd.print("                    "); // clear line
+        lcd.setCursor(0, 2); 
+      }
+      if (i == 2) {
+        // Line 3: show slots 2 and 3
+        lcd.setCursor(0, 3);
+        lcd.print("                    "); // clear line
+        lcd.setCursor(0, 3);
+      }
 
-      // If configured and physically present, read by ROM address
       if (configured) {
-        if (sensors.isConnected(knownSensors[i])) {
-          tempC = sensors.getTempC(knownSensors[i]);
-        } else {
-          tempC = DEVICE_DISCONNECTED_C;
-        }
-      }
-
-      // Update LCD: only show first two configured slots on the remaining 2 display lines
-      if (i < 2) {
-        lcd.setCursor(0, 2 + i);
-        lcd.print("                    "); // clear 20-char line
-        lcd.setCursor(0, 2 + i);
-        lcd.print("S"); lcd.print(i); lcd.print(": ");
-        if (knownNames[i] && knownNames[i][0]) {
-          lcd.print(knownNames[i]); lcd.print(" ");
-        } else if (configured) {
-          lcd.print("Addr"); lcd.print(i); lcd.print(" ");
-        } else {
-          lcd.print("not cfg");
-        }
-
-        if (!configured) {
-          // nothing to show
-        } else if (tempC != DEVICE_DISCONNECTED_C) {
-          lcd.setCursor(14, 2 + i);
+        lcd.print(knownNames[i]); lcd.print(": ");
+        if (tempC != DEVICE_DISCONNECTED_C) {
+          // sensor configured and connected, show name and temperature
           lcd.print(tempC);
-          lcd.print(" \xDF" "C");
         } else {
-          lcd.setCursor(14, 2 + i);
-          lcd.print("---- \xDF" "C");
+          // sensor configured but not connected, show sensor name but now temperature
+          lcd.print("--.--");
         }
-      }
-
-      // Serial log for all slots
-      Serial.print("Slot "); Serial.print(i); Serial.print(" ");
-      if (knownNames[i] && knownNames[i][0]) { Serial.print(knownNames[i]); Serial.print(" "); }
-      if (!configured) {
-        Serial.println("- not configured");
+        lcd.print(" ");
       } else {
-        Serial.print("-> "); printAddress(knownSensors[i]); Serial.print(" : ");
-        if (tempC != DEVICE_DISCONNECTED_C) Serial.println(tempC);
-        else Serial.println("disconnected");
+        // not configured, show placeholder
+        lcd.print("--: --.-- ");
       }
-
-      // If the ID jumper was plugged during scanning, break early to enter identificationMode next iteration
-      if (digitalRead(ID_PIN) == LOW) break;
     }
 
-    // Wait 2 seconds before next measurement
-    delay(2000);
+    // Serial log for all slots
+    Serial.print("Slot "); Serial.print(i); Serial.print(" ");
+    if (knownNames[i] && knownNames[i][0]) { Serial.print(knownNames[i]); Serial.print(" "); }
+    if (!configured) {
+      Serial.println("- not configured");
+    } else {
+      Serial.print("-> "); printAddress(knownSensors[i]); Serial.print(" : ");
+      if (tempC != DEVICE_DISCONNECTED_C) Serial.println(tempC);
+      else Serial.println("disconnected");
+    }
+
   }
+
+  // Wait 2 seconds before next measurement
+  delay(2000);
 }
