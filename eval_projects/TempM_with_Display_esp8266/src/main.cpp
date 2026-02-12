@@ -273,10 +273,10 @@ void loop()
     // Example of oene LCD page with 4 configured sensors (slots 0,1,2,7) and 4 unconfigured slots (3,4,5,6):
     // |12345678901234567890|
     // +--------------------+
-    // !S0: Sensor_1 23,45°C!
-    // !S1: Sensor_2 23,45°C!
-    // !S4: Sensor_5 23,45°C!
-    // !S7: Sensor_6 23,45°C!
+    // !S0: Sensor_1 23.45°C!
+    // !S1: Sensor_2 23.45°C!
+    // !S4: Sensor_5 23.45°C!
+    // !S7: Sensor_6 23.45°C!
     // +--------------------+
     // 
     // Note: Sensor names are truncated to 7 Characters to fit the display,
