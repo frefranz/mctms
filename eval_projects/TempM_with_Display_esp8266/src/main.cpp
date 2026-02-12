@@ -115,12 +115,14 @@ DeviceAddress knownSensors[] = {
   {0x28,0x2C,0x44,0x6E,0x00,0x00,0x00,0xA6}, // slot 2 - Outdoor Sensor 0 (Sensor with cable)
   {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 3 - replace with ROM for "sensor 3"
   {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 4 - replace with ROM for "sensor 4"
-  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 5 - replace with ROM for "sensor 5"
-  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // slot 6 - replace with ROM for "sensor 6"
-  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}  // slot 7 - replace with ROM for "sensor 7"
+  {0x28,0xD0,0x08,0x9F,0x00,0x00,0x00,0x9F}, // slot 5 - replace with ROM for "sensor 5"
+  {0x28,0xEC,0x67,0x9F,0x00,0x00,0x00,0x71}, // slot 6 - replace with ROM for "sensor 6"
+  {0x28,0x2C,0x44,0x6E,0x00,0x00,0x00,0xA6}  // slot 7 - replace with ROM for "sensor 7"
 };
 
 // Friendly names for the sensors, limited to 8 characters for MQTT protocol efficiency.
+// Note: For the LCD display sensor names get truncated in the display section to 7 characters to fit the display
+//
 // Use fixed-size char arrays so any initializer longer than NAME_MAX triggers a compile-time error.
 constexpr size_t NAME_MAX = 8;
 // Each entry holds up to NAME_MAX characters plus terminating '\0'.
@@ -130,13 +132,11 @@ const char knownNames[][NAME_MAX + 1] = {
   "Outdoor",        // friendly name for slot 2    
   "",               // friendly name for slot 3
   "",               // friendly name for slot 4
-  "",               // friendly name for slot 5
-  "",               // friendly name for slot 6
-  ""                // friendly name for slot 7
+  "Indr 0",         // friendly name for slot 5
+  "Indr 1",         // friendly name for slot 6
+  "Outdr0"          // friendly name for slot 7
 };
 static_assert(sizeof(knownNames) / sizeof(knownNames[0]) == 8, "knownNames must contain exactly 8 entries");
-
-
 const size_t KNOWN_SENSORS = sizeof(knownSensors) / sizeof(knownSensors[0]);
 
 // Helpers
@@ -236,16 +236,22 @@ void setup()
     // never reached: identificationMode loops forever until reset
   }
 
-  lcd.print("ReadTemp. 2026-02-11");  // Line 0: print a message to the LCD
+  lcd.print("ReadTemp. 2026-02-12");  // Line 0: print a message to the LCD
   lcd.setCursor(0, 1);                // Set cursor to column 0, row 1
   lcd.print("--------------------");  // Line 1: print a separator line
-
+  delay(500);
+  lcd.setCursor(0, 2);                // ...and so on for line 2 and 3
+  lcd.print("Preparing for");  
+  lcd.setCursor(0, 3);
+  lcd.print("Sensor Display");
+  delay(2000);                        // wait 2 seconds before switching to sensor display
 }
 
 void loop()
 {
   sensors.requestTemperatures();
   lcd.clear();
+  uint8_t rowcnt = 0;           // reset row count for a new page
 
   // Loop through each configured (known) sensor slot
   for (size_t i = 0; i < KNOWN_SENSORS; i++) {
@@ -276,20 +282,23 @@ void loop()
     // Note: Sensor names are truncated to 7 Characters to fit the display,
     //       if a sensor is configured but not connected, the display shows "--.--"
 
-    if (i == 4) {
-      delay(2000);          // wait 2 seconds before switching to the second page (if more than 4 sensors are configured)
-      lcd.clear();
-    }
-    lcd.setCursor(0, i%4);  // modulo 4 to wrap around to the second page after 4 sensors
-
     if (configured) {
+      if (rowcnt == 4) {          // 2nd page for more than 4 sensors: show after a delay to allow reading the first page
+        delay(4000);              // wait n seconds before switching to the second page
+        lcd.clear();
+        rowcnt = 0;               // reset row count for the new page
+      }
+      lcd.setCursor(0, rowcnt);   // set cursor to current row (rowcnt is reset to 0 on a new page)
+
+
       lcd.print("S"); lcd.print(i); lcd.print(": ");
 
-      // Truncate sensor name to 7 characters to fit the display
-      char truncated_str[8];
-      strncpy(truncated_str, knownNames[i], 7);
-      truncated_str[7] = '\0';
-      lcd.print(truncated_str);
+      // Make sure that a sensor name is always 7 characters long to ensure a consistent display format.
+      char eq_length_str[9] = "        "; // 8 chars + null terminator as buffer for the formatted name
+      strncpy(eq_length_str, knownNames[i], strlen(knownNames[i]));
+      eq_length_str[7] = '\0';
+      lcd.print(eq_length_str);
+      lcd.print(" ");
 
       if (TempValue[i] != DEVICE_DISCONNECTED_C) {
         // sensor configured and connected, show sensor name and temperature value
@@ -299,6 +308,7 @@ void loop()
         lcd.print("--.--");
       }
       lcd.print(" \xDF" "C"); // print degree symbol and C
+      rowcnt++;
     }
     
 
@@ -315,6 +325,6 @@ void loop()
 
   }
 
-  // Wait 2 seconds before next measurement
-  delay(2000);
+  // Wait n seconds before starting next measurement cycle
+  delay(4000);
 }
