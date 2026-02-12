@@ -93,6 +93,8 @@ Made the main loop() ID-aware: it enters identificationMode() when the jumper is
 // Use an INPUT_PULLUP so the normal state is HIGH when jumper is open.
 #define ID_PIN D2 // GPIO4 - safe, non-boot pin
 
+typedef float TemparatureValue[8];
+TemparatureValue TempValue;
 
 LiquidCrystal_I2C lcd(0x27, 16, 4);  // set the LCD address to 0x27 for the 16 chars and 4 line display
 
@@ -118,16 +120,22 @@ DeviceAddress knownSensors[] = {
   {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}  // slot 7 - replace with ROM for "sensor 7"
 };
 
-const char* knownNames[] = {
-  "I0",         // friendly name for slot 0
-  "I1",         // friendly name for slot 1
-  "O0",         // friendly name for slot 2    
-  "",           // friendly name for slot 3
-  "",           // friendly name for slot 4
-  "",           // friendly name for slot 5
-  "",           // friendly name for slot 6
-  ""            // friendly name for slot 7
+// Friendly names for the sensors, limited to 8 characters for MQTT protocol efficiency.
+// Use fixed-size char arrays so any initializer longer than NAME_MAX triggers a compile-time error.
+constexpr size_t NAME_MAX = 8;
+// Each entry holds up to NAME_MAX characters plus terminating '\0'.
+const char knownNames[][NAME_MAX + 1] = {
+  "Indoor0",        // friendly name for slot 0
+  "Indoor1",        // friendly name for slot 1
+  "Outdoor",        // friendly name for slot 2    
+  "",               // friendly name for slot 3
+  "",               // friendly name for slot 4
+  "",               // friendly name for slot 5
+  "",               // friendly name for slot 6
+  ""                // friendly name for slot 7
 };
+static_assert(sizeof(knownNames) / sizeof(knownNames[0]) == 8, "knownNames must contain exactly 8 entries");
+
 
 const size_t KNOWN_SENSORS = sizeof(knownSensors) / sizeof(knownSensors[0]);
 
@@ -225,7 +233,7 @@ void setup()
   // Enter identification mode if identification-mode jumper is pulled to ground
   if (digitalRead(ID_PIN) == LOW) {
     identificationMode();
-    // never reached as identificationMode loops forever until reset
+    // never reached: identificationMode loops forever until reset
   }
 
   lcd.print("ReadTemp. 2026-02-11");  // Line 0: print a message to the LCD
@@ -237,61 +245,62 @@ void setup()
 void loop()
 {
   sensors.requestTemperatures();
+  lcd.clear();
 
   // Loop through each configured (known) sensor slot
   for (size_t i = 0; i < KNOWN_SENSORS; i++) {
-    float tempC = DEVICE_DISCONNECTED_C;
+    TempValue[i] = DEVICE_DISCONNECTED_C;
     bool configured = !isAddressZero(knownSensors[i]);
 
     // If configured and physically present, read by ROM address
     if (configured) {
       if (sensors.isConnected(knownSensors[i])) {
-        tempC = sensors.getTempC(knownSensors[i]);
+        TempValue[i] = sensors.getTempC(knownSensors[i]);
       }
     }
 
-    // Update LCD: only show the first four configured slots on the remaining 2 display lines
+    // Update LCD with new temperature values:
+    // - only sensors configured are shown, 4 sensors on one LCD page, ordered by slot index.
+    // - if more than 4 sensores are configured, a second page is shown after some delay
+    // Note: all 8 slots are getting logged to the Serial Monitor
     //
-    // Slots are defined by their position within a line, each slot has 10 digits like:
-    // |1234567890|1234567890|
-    // +---------------------+
-    // !--SLOT 0--!--SLOT 1--!
-    // !--SLOT 2--!--SLOT 3--!
-    // +---------------------+
+    // Example of oene LCD page with 4 configured sensors (slots 0,1,2,7) and 4 unconfigured slots (3,4,5,6):
+    // |12345678901234567890|
+    // +--------------------+
+    // !S0: Sensor_1 23,45°C!
+    // !S1: Sensor_2 23,45°C!
+    // !S4: Sensor_5 23,45°C!
+    // !S7: Sensor_6 23,45°C!
+    // +--------------------+
     // 
-    // Within each slot, the following info is shown:
-    // |1234567890|  xy: any twe characters naming a sensor, from 0..9, A..Z, a..z. xy = "--" means sensor not configured
-    // |xy: tt.tt |  tt.tt: temperature with two decimals, "--.--" means sensor disconnected, no value readeable
+    // Note: Sensor names are truncated to 7 Characters to fit the display,
+    //       if a sensor is configured but not connected, the display shows "--.--"
 
-    if (i < 4) { // only show the first slots on the LCD, configured or not. All eight slots are only logged to Serial.
-      if (i == 0) {
-        // Line 2: show slots 0 and 1
-        lcd.setCursor(0, 2);
-        lcd.print("                    "); // clear line
-        lcd.setCursor(0, 2); 
-      }
-      if (i == 2) {
-        // Line 3: show slots 2 and 3
-        lcd.setCursor(0, 3);
-        lcd.print("                    "); // clear line
-        lcd.setCursor(0, 3);
-      }
-
-      if (configured) {
-        lcd.print(knownNames[i]); lcd.print(": ");
-        if (tempC != DEVICE_DISCONNECTED_C) {
-          // sensor configured and connected, show name and temperature
-          lcd.print(tempC);
-        } else {
-          // sensor configured but not connected, show sensor name but now temperature
-          lcd.print("--.--");
-        }
-        lcd.print(" ");
-      } else {
-        // not configured, show placeholder
-        lcd.print("--: --.-- ");
-      }
+    if (i == 4) {
+      delay(2000);          // wait 2 seconds before switching to the second page (if more than 4 sensors are configured)
+      lcd.clear();
     }
+    lcd.setCursor(0, i%4);  // modulo 4 to wrap around to the second page after 4 sensors
+
+    if (configured) {
+      lcd.print("S"); lcd.print(i); lcd.print(": ");
+
+      // Truncate sensor name to 7 characters to fit the display
+      char truncated_str[8];
+      strncpy(truncated_str, knownNames[i], 7);
+      truncated_str[7] = '\0';
+      lcd.print(truncated_str);
+
+      if (TempValue[i] != DEVICE_DISCONNECTED_C) {
+        // sensor configured and connected, show sensor name and temperature value
+        lcd.print(TempValue[i]);
+      } else {
+        // sensor configured but not connected: show sensor name use "--.--" in place for the temperature value
+        lcd.print("--.--");
+      }
+      lcd.print(" \xDF" "C"); // print degree symbol and C
+    }
+    
 
     // Serial log for all slots
     Serial.print("Slot "); Serial.print(i); Serial.print(" ");
@@ -300,7 +309,7 @@ void loop()
       Serial.println("- not configured");
     } else {
       Serial.print("-> "); printAddress(knownSensors[i]); Serial.print(" : ");
-      if (tempC != DEVICE_DISCONNECTED_C) Serial.println(tempC);
+      if (TempValue[i] != DEVICE_DISCONNECTED_C) Serial.println(TempValue[i]);
       else Serial.println("disconnected");
     }
 
