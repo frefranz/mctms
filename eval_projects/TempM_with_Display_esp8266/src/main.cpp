@@ -301,18 +301,19 @@ void loop()
       lcd.print(" ");
 
       if (TempValue[i] != DEVICE_DISCONNECTED_C) {
-        // sensor configured and connected, show sensor name and temperature value
-        lcd.print(TempValue[i]);
+        // Sensor configured and connected, show sensor name and temperature value
+        // Make sure the temp. value is always 5 characters long to ensure a consistent display format.
+        dtostrf(TempValue[i], 5, 2, eq_length_str);
+        lcd.print(eq_length_str);
       } else {
-        // sensor configured but not connected: show sensor name use "--.--" in place for the temperature value
+        // Sensor configured but not connected: show sensor name use "--.--" in place for the temperature value
         lcd.print("--.--");
       }
       lcd.print(" \xDF" "C"); // print degree symbol and C
       rowcnt++;
     }
     
-
-    // Serial log for all slots
+    // Simple serial log for all slots
     Serial.print("Slot "); Serial.print(i); Serial.print(" ");
     if (knownNames[i] && knownNames[i][0]) { Serial.print(knownNames[i]); Serial.print(" "); }
     if (!configured) {
@@ -322,7 +323,6 @@ void loop()
       if (TempValue[i] != DEVICE_DISCONNECTED_C) Serial.println(TempValue[i]);
       else Serial.println("disconnected");
     }
-
   }
 
   // Wait n seconds before starting next measurement cycle
