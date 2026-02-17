@@ -322,7 +322,7 @@ void loop()
     // - if more than 4 sensores are configured, a second page is shown after some delay
     // Note: all 8 slots are getting logged to the Serial Monitor
     //
-    // Example of oene LCD page with 4 configured sensors (slots 0,1,2,7) and 4 unconfigured slots (3,4,5,6):
+    // Example of one LCD page with 4 configured sensors (slots 0,1,2,7) and 4 unconfigured slots (3,4,5,6):
     // |12345678901234567890|
     // +--------------------+
     // !S0: Sensor_1 23.45°C!
