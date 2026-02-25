@@ -1,0 +1,63 @@
+Multi Channel Temperature Measurement System (mctms)
+====================================================
+
+
+mctms block-level architecture:
+- the mctms shall be using the MQTT protocol for communication
+
+- MQTT demands, that a system consists of one broker and one or several clients communicating via the broker.
+  Therefore, the system architecture of mctms is as follows:
+  
+- a broker (mosquitto), running on a raspberry pi (rpi0)
+
+- a recording client to collect the temperature measurement data, add a timestamp and store the data to the file system.
+  The recording client is running on a windows systenm (win0), it is named mqtt_recording_client.py, a first implemention is done
+
+- one or several temperature measurement clients (tmc0 to tmcx)
+  - each of the temperature measurement clients are implemented on a esp8266 single-board controller.
+  - the clients are named tmc0, tmc1 and so on, where tmc is short for "temperature measurement client"
+  - each temperature measurement client is connected to up to 16 temperature sensors organized in 2 onewire-busses
+  - a max. number of eight sensors per onewire-bus are called a sensorbank
+  - sb0 means sensorbank0 and sb1 is the name for the second sensorbank
+  - the temperature measurement results shall get published via MQTT with one topic per sensorbank
+  - this means, we have two topics per client. e.g. for the first client there are he topics tmc0/sb0 and tmc1/sb1
+  
+- a command and control client (optional)
+  - named
+  
+Payload data structure
+
+Broker
+
+Clients
+- recording client
+- temperature measurement client (physical client)
+- temperature measurement client (modelled client)
+- command and control client (optional)
+
+Physical measurement requirements
+
+
+Now to my requirements:
+In order to be able to test my mqtt environment with an increased MQTT message load, I would like to add models of my temperature measurement clients (there is not enough measurement hardware available yet).
+
+The model shall be written in Python
+The modelled client shall be named e.g. mtmc01 (I wil run then more instances of said model), mtmc is short for modelled temperature measurement client.
+The payload shall be structured in JSON like
+
+{"tmc01/sb01/ts0": 22.5, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5}
+
+
+named tmc_model.py, to replace my real esp8266 single-board computers for now.
+
+o.k., with your help, the rendering client works. Also the payload data format is defined to be json.
+
+For the temperature sensor clients it will be like
+{"tmc0/owb0/ts0": 22.5, "tmc0/owb1/ts0": 21.8, ..., "tmc0/owb1/ts7": 24.2} and
+{"tmc1/owb0/ts0": 22.5, "tmc1/owb1/ts0": 21.8, ..., "tmc1/owb1/ts7": 24.2}
+
+
+Now in order to be able to test my mqtt environment, I would like to have a model of my temperature measurement clients in python language, named tmc_model.py, to replace my real esp8266 single-board computers for now.
+tmc_model.py shall be able to instantiate two tmc clients, tmc0 and  spc1 in my case. the sensor orgnization is already described above, to be able to see which sensor is queried, ts0 shall deliver 0.0 to 0.4 "degrees" as a temperature value, ts0 shall deliver 1.0 to 1.4 "degrees" and so on. the temperature value should go from x.0 to x.4 and back within 20 seconds, so roughly one change every 2 seconds.
+
+- one command and control client for supervising the system, running on a linux desktop (ldt0), implemented in Python as mqtt_comcon_client.py, running also on ldt0, named but not yet implemented  

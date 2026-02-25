@@ -1,0 +1,24 @@
+
+# Client Model Configuration:
+
+# Connection to Broker
+broker_ip:   192.168.2.32
+broker_port: 
+
+# Client configuration
+client_name: tmc1	# Client name
+ds_nr: 0			# Data set number to start with (default is 0)
+sb_cnt: 1			# Number of sensor banks numbers available (max. 2 are supported)
+meas_cyc: 2			# Measurement cycle in seconds (
+
+# Payload configuration
+ts_dat
+	"s0": 20.00, 20.00, 20.00, 20.00, 20.00, 20.00, 20.00, 20.00, 20.00, 20.00
+    "s1": 21.10,
+    "s2": 22.20,
+    "s3": 23.30,
+    "s4": 24.40,
+    "s5": 25.50,
+    "s6": 26.60,
+    "s7": 27.70
+	

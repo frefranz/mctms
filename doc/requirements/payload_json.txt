@@ -1,0 +1,28 @@
+	
+JSON Payload Formatting Proposal:
+
+{
+	"plv": "1.0.0",			# payload version, defining the data structure of the payload. Given to be able to avoid faulty payload interpretations
+	"client": "tmc0",		# client name
+	"sb_nr": 0,			# sensor bank number
+	"ds_nr": 0,			# data set number, starts with 0 for the first set published and gets incremented with each set
+	"ts_dat":			# temperature sensing data are following
+	{
+		"s0": 20.00,		# name of the first sensor as configured in the client
+		"s1": 21.10,		# names can be max. 8 characters long, no space char may be part of the name
+		"s2": 22.20,		# values are given as signed integers (not enclosed in "" -> no character strings
+		"s3": 23.30,		# if no sensor is configured, the name is "not_conf", value is supposed to be "00.00"
+		"s4": 24.40,		# if a configured sensor does not deliver data, the value is supposed to read "99.99"
+		"s5": 25.50,
+		"s6": 26.60,
+		"s7": 27.70
+	}
+}
+
+When datasets are going to be stored on disk, a timestamp shall get added.
+It shall get inserted between ds_nr and ts_dat, e.g.
+"ts_dat_ts": "2026-01-28 14:36:12" -> is there any other format conceivable besides string?
+
+Kompaktformat:
+xxx
+
