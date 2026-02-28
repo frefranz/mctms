@@ -1,24 +1,37 @@
 
-# Client Model Configuration:
+# Temperature Measurement Client Model (tmcm) Configuration Data:
 
 # Connection to Broker
 broker_ip:   192.168.2.32
-broker_port: 
+broker_port: 1883
+
 
 # Client configuration
 client_name: tmc1	# Client name
-ds_nr: 0			# Data set number to start with (default is 0)
 sb_cnt: 1			# Number of sensor banks numbers available (max. 2 are supported)
-meas_cyc: 2			# Measurement cycle in seconds (
+meas_delay: 2	    # Delay in seconds between two measurements, default is 2 seconds if no value is given, the value shall be between 1 and 20 seconds
 
-# Payload configuration
+
+# Payload configuration for the temperature values to be published
+
+# Payload version
+plv: 0.1.0          # Defines the data structure of the payload. Given to be able to avoid faulty payload interpretations
+
+# Dataset enumberation number
+ds_nr: 0			# unsigned 16 bit number, gets incremented with each measurement published, default is 0 if no other start value is given
+                    # When the number reaches 65535, it shall get reset to 0 with the next measurement, so that the number is always between 0 and 65535
+
+# Temperature sensor names and values
+# The sensor names are given as s0 to s7 in this sample configuration file. Real names can have a max. lenght of 8 characters
+# Each value after the sensor name is the value that shall get published with each measurement
+# When the right-most value of a sensor is reached, it shall be reset to the first value in the list, so that the values are cyclically repeated
 ts_dat
-	"s0": 20.00, 20.00, 20.00, 20.00, 20.00, 20.00, 20.00, 20.00, 20.00, 20.00
-    "s1": 21.10,
-    "s2": 22.20,
-    "s3": 23.30,
-    "s4": 24.40,
-    "s5": 25.50,
-    "s6": 26.60,
-    "s7": 27.70
-	
+	"s0": 20.00, 20.10, 20.20, 20.30, 20.40, 20.50, 20.60, 20.70, 20.80, 20.90
+    "s1": 21.90, 21.80, 21.70, 21.60, 21.50, 21.40, 21.30, 21.20, 21.10, 21.00 
+    "s2": 22.00, 22.10, 22.20, 22.30, 22.40, 22.50, 22.60, 22.70, 22.80, 22.90
+    "s3": 23.90, 23.80, 23.70, 23.60, 23.50, 23.40, 23.30, 23.20, 23.10, 23.00
+    "s4": 24.00, 24.10, 24.20, 24.30, 24.40, 24.50, 24.60, 24.70, 24.80, 24.90
+    "s5": 25.90, 25.80, 25.70, 25.60, 25.50, 25.40, 25.30, 25.20, 25.10, 25.00
+    "s6": 26.00, 26.10, 26.20, 26.30, 26.40
+    "s7": 27.90, 27.80, 27.70, 27.60, 27.50
+

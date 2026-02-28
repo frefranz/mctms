@@ -1,12 +1,18 @@
-	
-JSON Payload Formatting Proposal:
+# Note: This file contains the proposed JSON payload format for the temperature sensing data.
+#       It includes the payload version, client name, sensor bank number, data set number, and the temperature sensing data for each sensor.
+#    	The proposal also suggests adding a timestamp when datasets are stored on disk.
+
+# JSON data structures may not conatain comments, so the comments in this file are for documentation purposes only
+# and should not be included in the actual JSON payload.
+
+# JSON Payload Formatting Proposal:
 
 {
-	"plv": "1.0.0",			# payload version, defining the data structure of the payload. Given to be able to avoid faulty payload interpretations
+	"plv": "0.1.0",			# payload version, defining the data structure of the payload. Given to be able to avoid faulty payload interpretations
 	"client": "tmc0",		# client name
-	"sb_nr": 0,			# sensor bank number
-	"ds_nr": 0,			# data set number, starts with 0 for the first set published and gets incremented with each set
-	"ts_dat":			# temperature sensing data are following
+	"sb_nr": 0,			    # sensor bank number
+	"ds_nr": 0,			    # data set number, starts with 0 for the first set published and gets incremented with each set
+	"ts_dat":			    # temperature sensing data are following
 	{
 		"s0": 20.00,		# name of the first sensor as configured in the client
 		"s1": 21.10,		# names can be max. 8 characters long, no space char may be part of the name
@@ -19,10 +25,9 @@ JSON Payload Formatting Proposal:
 	}
 }
 
-When datasets are going to be stored on disk, a timestamp shall get added.
-It shall get inserted between ds_nr and ts_dat, e.g.
-"ts_dat_ts": "2026-01-28 14:36:12" -> is there any other format conceivable besides string?
+# When datasets are going to be stored on disk, a timestamp shall get added.
+# It shall get inserted between ds_nr and ts_dat, e.g.
+# "time": "2026-01-28 14:36:12" -> is there any other format conceivable besides string?
 
-Kompaktformat:
-xxx
-
+# Compactformat:
+{"plv":"0.1.0","client":"tmc0","sb_nr":0,"ds_nr":0,"ts_dat":{"s0":20,"s1":21.1,"s2":22.2,"s3":23.3,"s4":24.4,"s5":25.5,"s6":26.6,"s7":27.7}}
