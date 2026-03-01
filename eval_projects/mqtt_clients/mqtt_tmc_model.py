@@ -27,6 +27,9 @@ import sys
 import time
 from typing import Any, Dict, List
 
+# program version follows semantic 3-number scheme
+VERSION = "0.1.0"
+
 import yaml
 
 import paho.mqtt.client as mqtt
@@ -46,13 +49,18 @@ def load_config(path: str) -> Dict[str, Any]:
 # MQTT callbacks
 # ---------------------------------------------------------------------------
 
-def on_connect(client: mqtt.Client, userdata: Any, flags: Dict[str, int], rc: int) -> None:
+def on_connect(client: mqtt.Client, userdata: Any, flags: Dict[str, int], rc: int, *args, **kwargs) -> None:
+    # newer versions of paho-mqtt pass a properties argument; accept
+    # arbitrary extra parameters to avoid TypeError.
     print(f"connected to broker, rc={rc}")
+    # let the user know the model is active
+    print("tmc model up and running, type ctrl-c for model shutdown")
 
 
 def on_message(client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage) -> None:
     # print any message that is published to topics we subscribe to
-    print(f"[received] {msg.topic}: {msg.payload.decode('utf-8')}" )
+    if getattr(userdata, "verbose", False):
+        print(f"[received] {msg.topic}: {msg.payload.decode('utf-8')}" )
 
 
 # ---------------------------------------------------------------------------
@@ -76,13 +84,13 @@ class SensorBank:
 
 
 class TmcModel:
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: Dict[str, Any], verbose: bool = False) -> None:
+        self.verbose = verbose
         self.broker_ip = config.get("broker_ip", "localhost")
         self.broker_port = int(config.get("broker_port", 1883))
         self.client_name = config.get("client_name", "tmc0")
         self.sb_cnt = int(config.get("sb_cnt", 1))
         self.meas_delay = int(config.get("meas_delay", 2))
-        self.plv = str(config.get("plv", "0.1.0"))
         self.ds_nr = int(config.get("ds_nr", 0))
 
         # expect ts_dat to be a dict of sensor-name -> list of values
@@ -94,8 +102,16 @@ class TmcModel:
         # (the sample configuration does not distinguish between banks).
         self.banks = [SensorBank(raw_ts_dat) for _ in range(self.sb_cnt)]
 
-        # create mqtt client
-        self.mqtt = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id=self.client_name)
+        # create mqtt client.  the default callback API version (1) is
+        # deprecated and triggers a warning; request version 2 explicitly.
+        # our callbacks already accept ``*args, **kwargs`` so the extra
+        # parameters that version 2 passes are handled gracefully.
+        self.mqtt = mqtt.Client(
+            client_id=self.client_name,
+            callback_api_version=CallbackAPIVersion.VERSION2,
+        )
+        # store reference in userdata so callbacks can inspect verbosity
+        self.mqtt.user_data_set(self)
         self.mqtt.on_connect = on_connect
         self.mqtt.on_message = on_message
 
@@ -119,7 +135,6 @@ class TmcModel:
                 for sb_nr, bank in enumerate(self.banks):
                     ts_values = bank.next_values()
                     payload = {
-                        "plv": self.plv,
                         "client": self.client_name,
                         "sb_nr": sb_nr,
                         "ds_nr": self.ds_nr,
@@ -131,11 +146,21 @@ class TmcModel:
                     self.mqtt.publish(topic, msg)
 
                     # also publish each sensor individually so that someone
-                    # can subscribe to tmcX/sbY/sensorName
+                    # can subscribe to tmcX/sbY/sensorName.  Build a small
+                    # payload that follows the same JSON schema as the
+                    # full bank message, making it easier for clients that
+                    # expect JSON to parse.
                     for name, value in ts_values.items():
-                        self.mqtt.publish(f"{topic}/{name}", str(value))
+                        single_payload = {
+                            "client": self.client_name,
+                            "sb_nr": sb_nr,
+                            "ds_nr": self.ds_nr,
+                            "ts_dat": {name: value},
+                        }
+                        self.mqtt.publish(f"{topic}/{name}", json.dumps(single_payload))
 
-                    print(f"[published] {topic} {msg}")
+                    if self.verbose:
+                        print(f"[published] {topic} {msg}")
 
                 # increment data set counter and wrap at 65535
                 self.ds_nr = (self.ds_nr + 1) & 0xFFFF
@@ -155,15 +180,28 @@ def main() -> None:
         description="Start a modelled temperature measurement client."
     )
     parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=VERSION,
+        help="show program version and exit",
+    )
+    parser.add_argument(
         "-c",
         "--config",
         help="path to yaml configuration file",
         default="tmcm_config.yml",
     )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="enable verbose output (show every publish/receive)",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
-    model = TmcModel(config)
+    model = TmcModel(config, verbose=args.verbose)
 
     # catch signals for graceful shutdown
     def handler(sig, frame):
