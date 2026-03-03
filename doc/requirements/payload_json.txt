@@ -1,14 +1,13 @@
 # Note: This file contains the proposed JSON payload format for the temperature sensing data.
-#       It includes the payload version, client name, sensor bank number, data set number, and the temperature sensing data for each sensor.
+#       It includes the client name, sensor bank number, data set number, and the temperature sensing data for each sensor.
 #    	The proposal also suggests adding a timestamp when datasets are stored on disk.
 
 # JSON data structures may not conatain comments, so the comments in this file are for documentation purposes only
 # and should not be included in the actual JSON payload.
 
 # JSON Payload Formatting Proposal:
-
 {
-	"plv": "0.1.0",			# payload version, defining the data structure of the payload. Given to be able to avoid faulty payload interpretations
+
 	"client": "tmc0",		# client name
 	"sb_nr": 0,			    # sensor bank number
 	"ds_nr": 0,			    # data set number, starts with 0 for the first set published and gets incremented with each set
@@ -30,4 +29,4 @@
 # "time": "2026-01-28 14:36:12" -> is there any other format conceivable besides string?
 
 # Compactformat:
-{"plv":"0.1.0","client":"tmc0","sb_nr":0,"ds_nr":0,"ts_dat":{"s0":20,"s1":21.1,"s2":22.2,"s3":23.3,"s4":24.4,"s5":25.5,"s6":26.6,"s7":27.7}}
+{"client":"tmc0","sb_nr":0,"ds_nr":0,"ts_dat":{"s0":20,"s1":21.1,"s2":22.2,"s3":23.3,"s4":24.4,"s5":25.5,"s6":26.6,"s7":27.7}}

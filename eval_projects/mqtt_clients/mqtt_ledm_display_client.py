@@ -6,14 +6,12 @@
 #
 # Note: Make sure an MQTT broker is running at the specified connection address.
 
-import paho.mqtt.client as mqtt
-
 """
 MQTT-driven display client for 64x64 LED matrix.
 
-- Subscribes to a JSON measurements topic (default `sbc0/measurements`).
-- Expects payload like: {"sbc0/owb0/ts0":"00.00", "sbc0/owb0/ts1":"01.23"}
-- Displays two configured sensor values on the matrix.
+    - Subscribes to a JSON measurements topic (default `tmc1/sb0`).
+    - Expects payload in the new format: {"client":"tmc0","sb_nr":0,"ds_nr":0,"ts_dat": {"s0":20.0, "s1":21.1}}
+    - Displays two configured sensor values (default `s0` and `s1`) on the matrix.
 
 Requirements:
   - rpi-rgb-led-matrix (Python bindings)
@@ -29,13 +27,16 @@ import signal
 import sys
 import threading
 import time
+import yaml
+import paho.mqtt.client as mqtt
 
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 except Exception as e:
     raise SystemExit(f"Failed to import rpi-rgb-led-matrix: {e}\nMake sure the library is installed and you're running this on the Raspberry Pi.")
 
-import paho.mqtt.client as mqtt
+# program version follows semantic 3-number scheme
+VERSION = "0.1.0"
 
 
 def make_matrix(options_kwargs):
@@ -73,7 +74,7 @@ class LEDMDisplay:
         self.color = graphics.Color(255, 255, 0)
 
         # mqtt
-        self.client = mqtt.Client(client_id="ledm-display", callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+        self.client = mqtt.Client(client_id="ledm-display")
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
@@ -97,11 +98,36 @@ class LEDMDisplay:
     def _on_message(self, client, userdata, msg):
         try:
             payload = json.loads(msg.payload.decode())
-            # update selected keys if present
-            if self.key1 in payload:
-                self.current_values[self.key1] = payload[self.key1]
-            if self.key2 in payload:
-                self.current_values[self.key2] = payload[self.key2]
+
+            # support new payload format: { ..., "ts_dat": {"s0": 20.0, ...} }
+            ts_dat = None
+            if isinstance(payload, dict) and "ts_dat" in payload and isinstance(payload["ts_dat"], dict):
+                ts_dat = payload["ts_dat"]
+            else:
+                # fallback: payload may be a flat mapping of keys -> values
+                ts_dat = payload if isinstance(payload, dict) else {}
+
+            def find_value(key: str):
+                # try exact key in ts_dat
+                if isinstance(ts_dat, dict) and key in ts_dat:
+                    return ts_dat[key]
+                # try last path segment (in case callers pass full topic-like keys)
+                last = key.split("/")[-1]
+                if isinstance(ts_dat, dict) and last in ts_dat:
+                    return ts_dat[last]
+                # finally, try top-level payload
+                if isinstance(payload, dict) and key in payload:
+                    return payload[key]
+                return None
+
+            v1 = find_value(self.key1)
+            v2 = find_value(self.key2)
+
+            if v1 is not None:
+                self.current_values[self.key1] = v1
+            if v2 is not None:
+                self.current_values[self.key2] = v2
+
             self._draw()
         except Exception as e:
             print(f"Failed to process message: {e}")
@@ -148,15 +174,33 @@ class LEDMDisplay:
 
 
 def main():
+    # parse config file path first so config values can provide defaults
+    cfg_parser = argparse.ArgumentParser(add_help=False)
+    cfg_parser.add_argument("-c", "--config", default="mqtt_ledm_display_client_config.yml", help="path to yaml config file")
+    known_args, _ = cfg_parser.parse_known_args()
+
+    # load configuration if file exists
+    def load_config(path: str):
+        try:
+            with open(path, "r") as f:
+                data = yaml.safe_load(f)
+                return data or {}
+        except FileNotFoundError:
+            return {}
+
+    cfg = load_config(known_args.config)
+
     parser = argparse.ArgumentParser(description="MQTT LED matrix display client")
-    parser.add_argument("--broker", default="127.0.0.1", help="MQTT broker host")
-    parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
-    parser.add_argument("--topic", default="sbc0/measurements", help="Topic to subscribe for measurement JSON payloads")
-    parser.add_argument("--key1", default="sbc0/owb0/ts0", help="JSON key for first temperature value")
-    parser.add_argument("--key2", default="sbc0/owb0/ts1", help="JSON key for second temperature value")
-    parser.add_argument("--font", default="/home/pi/rpi-rgb-led-matrix/fonts/7x13.bdf", help="Path to BDF font")
-    parser.add_argument("--brightness", type=int, default=20, help="Brightness 0..100")
-    parser.add_argument("--hwmap", default="adafruit-hat", help="Hardware mapping name (e.g. adafruit-hat)")
+    parser.add_argument("-c", "--config", default=known_args.config, help="path to yaml config file")
+    parser.add_argument("-v", "--version", action="version", version=VERSION, help="show program version and exit")
+    parser.add_argument("--broker", default=cfg.get("broker", "127.0.0.1"), help="MQTT broker host")
+    parser.add_argument("--port", type=int, default=cfg.get("port", 1883), help="MQTT broker port")
+    parser.add_argument("--topic", default=cfg.get("topic", "tmc1/sb0"), help="Topic to subscribe for measurement JSON payloads")
+    parser.add_argument("--key1", default=cfg.get("key1", "s0"), help="JSON key for first temperature value (e.g. s0)")
+    parser.add_argument("--key2", default=cfg.get("key2", "s1"), help="JSON key for second temperature value (e.g. s1)")
+    parser.add_argument("--font", default=cfg.get("font", "rpi-rgb-led-matrix/fonts/7x13.bdf"), help="Path to BDF font")
+    parser.add_argument("--brightness", type=int, default=cfg.get("brightness", 20), help="Brightness 0..100")
+    parser.add_argument("--hwmap", default=cfg.get("hwmap", "adafruit-hat"), help="Hardware mapping name (e.g. adafruit-hat)")
 
     args = parser.parse_args()
 

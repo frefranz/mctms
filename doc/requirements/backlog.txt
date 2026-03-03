@@ -1,0 +1,16 @@
+# Here we have reuqirements that are not yet fully defined and are still in the backlog.
+# They may be added to the requirements specification at a later point in time (or not at all,
+# if they are deemed not relevant for the project).
+
+Establish a command and response structure for the MQTT communication between the temperature measurement clients and the controlling entities.
+Controlling entities may be a central server, a local gateway, or any other entity that needs to receive the temperature sensing data from the clients.
+More details in the controlling entities to be defined.
+
+The temperature measurement clients shall subscribe to all controlling entities automatically after startup.
+From these controlling entities, the clients shall receive commands to
+- to return status information about themselves (e.g. uptime, payload version (JSON data-structure), sensor configuration, etc.)
+- publish their sensing data after a specific trigger (e.g. a command to start publishing, or a time-based schedule).
+
+#	"plv": "0.1.0",			# payload version, defining the data structure of the payload. Given to be able to avoid faulty payload interpretations
+# Payload version
+#plv: 0.1.0          # Defines the data structure of the payload. Given to be able to avoid faulty payload interpretations

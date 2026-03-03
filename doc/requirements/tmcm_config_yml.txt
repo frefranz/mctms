@@ -14,10 +14,7 @@ meas_delay: 2	    # Delay in seconds between two measurements, default is 2 seco
 
 # Payload configuration for the temperature values to be published
 
-# Payload version
-plv: 0.1.0          # Defines the data structure of the payload. Given to be able to avoid faulty payload interpretations
-
-# Dataset enumberation number
+# Dataset enumeration number
 ds_nr: 0			# unsigned 16 bit number, gets incremented with each measurement published, default is 0 if no other start value is given
                     # When the number reaches 65535, it shall get reset to 0 with the next measurement, so that the number is always between 0 and 65535
 

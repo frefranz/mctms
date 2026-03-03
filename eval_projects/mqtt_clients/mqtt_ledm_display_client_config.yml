@@ -1,0 +1,11 @@
+# Sample configuration for mqtt_ledm_display_client.py
+# Values here are used as defaults; command-line options override them.
+
+broker: 192.168.2.32
+port: 1883
+topic: tmc1/sb0
+key1: s0
+key2: s1
+font: rpi-rgb-led-matrix/fonts/7x13.bdf
+brightness: 20
+hwmap: adafruit-hat
