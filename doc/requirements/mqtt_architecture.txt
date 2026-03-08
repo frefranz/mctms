@@ -20,7 +20,7 @@ mctms block-level architecture:
   - a max. number of eight sensors per onewire-bus are called a sensorbank
   - sb0 means sensorbank0 and sb1 is the name for the second sensorbank
   - the temperature measurement results shall get published via MQTT with one topic per sensorbank
-  - this means, we have two topics per client. e.g. for the first client there are he topics tmc0/sb0 and tmc1/sb1
+  - this means, we have two topics per client. e.g. for the first client there are he topics tmc0/sb0 and tmc1/sb1 
   
 - a command and control client (optional)
   - named

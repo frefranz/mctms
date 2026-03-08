@@ -56,6 +56,14 @@ LiquidCrystal_I2C lcd(0x27, 16, 4);  // set the LCD address to 0x27 for the 16 c
 // oneWire instance pin (not limited to Maxim/Dallas temperature ICs)
 OneWire oneWire(D1);
 
+// ------------------------------------------------------------------
+// Configuration constants for MQTT and sensor bank handling
+#define CLIENT_NAME "tmc0"      // client identifier used in topics and broker connection
+#define SB_NUMBER 0              // current sensor bank (0 = first bank)
+
+// dataset counter increments with each published payload
+static unsigned long dataset_nr = 0;
+
 // Pass our oneWire reference to Dallas Temperature.
 DallasTemperature sensors(&oneWire);
 
@@ -179,18 +187,35 @@ void setup_wifi() {
   // }
 }
 
+void callback(char* topic, byte* payload, unsigned int length) {
+  // simple message callback: log everything received to the serial monitor
+  Serial.print("Msg recv [");
+  Serial.print(topic);
+  Serial.print("] : ");
+  for (unsigned int i = 0; i < length; i++) {
+    Serial.write(payload[i]);
+  }
+  Serial.println();
+}
+
 void reconnect() {
   // Loop until we're connected or reconnected
   while (!client.connected()) {
     lcd.clear();
     lcd.print("Calling MQTT Broker:");
     Serial.print("Attempting MQTT connection...");
-    // Attempt to (re)connect
-    if (client.connect("temperature_measurement_client")) {
+    // Attempt to (re)connect using client identifier constant
+    if (client.connect(CLIENT_NAME)) {
       lcd.setCursor(0, 1);
       lcd.print("Broker connected.");
       Serial.println("connected.");
       delay(3000);    // wait to allow reading before switching display
+
+      // Once connected, (re)subscribe to the topics we care about.  The broker
+      // will happily accept any subscription, but we only ask for the bank we
+      // actually support so we don't receive messages for nonexistent hardware.
+      String baseTopic = String(CLIENT_NAME) + "/sb" + String(SB_NUMBER);
+      client.subscribe((baseTopic + "/#").c_str());
     } 
     else {
       lcd.setCursor(0, 1);
@@ -207,6 +232,7 @@ void reconnect() {
       delay(5000);      // Wait before retrying
     }
   }
+  client.setCallback(callback);
 }
 
 // Identification mode: once entered, runs until reset.
@@ -377,20 +403,80 @@ void loop()
     }
   }
 
-// Loop through all temperature valuesand assemble a payload string for MQTT transmission
-  String payload = "";
+// Loop through all temperature values and assemble a JSON payload string for MQTT
+  // transmission.  Fields are defined in payload_json.txt; names come from the
+  // friendly names array or use the special "not_conf" placeholder when a slot
+  // isn't configured.  While doing so we also gather the individual sensor names
+  // and values so they can be published separately (see Python model behaviour).
+  String payload = "{";
+  payload += "\"client\":\"" + String(CLIENT_NAME) + "\",";
+  payload += "\"sb_nr\":" + String(SB_NUMBER) + ",";
+  payload += "\"ds_nr\":" + String(dataset_nr++) + ",";
+  payload += "\"ts_dat\":{";
+
+  // temporary storage for per-sensor understanding
+  String sensorNames[KNOWN_SENSORS];
+  float sensorValues[KNOWN_SENSORS];
+  size_t sensorCount = 0;
+
   for (size_t i = 0; i < KNOWN_SENSORS; i++) {
-    payload = payload + String(TempValue[i]);             // simple CSV format oredered by slot number
-    if (i < KNOWN_SENSORS - 1) payload = payload + ", ";  // comma separated values but not after the last value
+    bool configured = !isAddressZero(knownSensors[i]);
+    String name;
+    float value;
+    if (!configured) {
+      name = "not_conf";
+      value = 0.00;
+    } else {
+      // if friendly name is empty somehow, still treat as not_conf
+      if (knownNames[i][0] == '\0') {
+        name = "not_conf";
+      } else {
+        name = String(knownNames[i]);
+      }
+      if (TempValue[i] == DEVICE_DISCONNECTED_C) {
+        value = 99.99; // configured but no data
+      } else {
+        value = TempValue[i];
+      }
+
+      // remember this sensor for individual publishing
+      sensorNames[sensorCount] = name;
+      sensorValues[sensorCount] = value;
+      sensorCount++;
+    }
+
+    payload += "\"" + name + "\":" + String(value, 2);
+    if (i < KNOWN_SENSORS - 1) payload += ",";
   }
 
-  // publish via MQTT to topic "sbc01/sb01" (tmc = temperatur measurement client, sb = sensor bank)
-  // retain flag set to false:
-  //   - last value is not retained by the broker
-  //   - all subscribers get the last value immediately upon subscription
+  payload += "}}";
 
-  client.publish("tmc01/sb01", payload.c_str(), false);
+  // publish bank payload first
+  String topic = String(CLIENT_NAME) + "/sb" + String(SB_NUMBER);
+  client.publish(topic.c_str(), payload.c_str(), false);
 
+  // then publish each sensor individually using the friendly name topic
+  for (size_t j = 0; j < sensorCount; j++) {
+    String singlePayload = "{";
+    singlePayload += "\"client\":\"" + String(CLIENT_NAME) + "\",";
+    singlePayload += "\"sb_nr\":" + String(SB_NUMBER) + ",";
+    singlePayload += "\"ds_nr\":" + String(dataset_nr - 1) + ","; // same dataset
+    singlePayload += "\"ts_dat\":{";
+    singlePayload += "\"" + sensorNames[j] + "\":" + String(sensorValues[j], 2);
+    singlePayload += "}}";
+
+    String singleTopic = topic + "/" + sensorNames[j];
+    client.publish(singleTopic.c_str(), singlePayload.c_str(), false);
+
+    if (true) { // always print per-sensor debug for now
+      Serial.print("Publish topic: "); Serial.println(singleTopic);
+      Serial.print("Payload: "); Serial.println(singlePayload);
+    }
+  }
+
+
+
+  // publish via MQTT to topic "<client>/sb<bank>" (tmc = temperature measurement client,
   // Wait n seconds before starting next measurement cycle
   delay(4000);
 }

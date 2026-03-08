@@ -17,7 +17,7 @@
 		"s1": 21.10,		# names can be max. 8 characters long, no space char may be part of the name
 		"s2": 22.20,		# values are given as signed integers (not enclosed in "" -> no character strings
 		"s3": 23.30,		# if no sensor is configured, the name is "not_conf", value is supposed to be "00.00"
-		"s4": 24.40,		# if a configured sensor does not deliver data, the value is supposed to read "99.99"
+		"s4": 24.40,		# if a configured sensor does not deliver data, the value is supposed to read "99.99" 
 		"s5": 25.50,
 		"s6": 26.60,
 		"s7": 27.70
