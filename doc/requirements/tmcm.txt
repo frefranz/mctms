@@ -17,10 +17,7 @@ After reading the configuration file, the modelled client shall publish the temp
 
 The payload shall be structured in JSON as defined in payload_json.txt
 
-A subscription to topics shall be possible as e.g. "tmc0/sb0/ts0", "tmc0/sb0/ts1" and so on, where tmc0 is the client name,
-sb0 is the sensor bank number and ts0 is the name of the first temperature sensor as configured in the client.
-
-A subscription to all sensors of a sensor bank shall be possible as e.g. "tmc0/sb0/#", where # is the MQTT wildcard for all subtopics.
+A subscription to topics shall be possible as e.g. "tmc0/sb0" or "tmc0/sb1", where tmc0 is the client name, sb0 is the sensor bank number.
 
 The modelled client shall support graceful shutdown with ctrl+c, so that the client can be stopped without killing the process.
 

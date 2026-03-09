@@ -14,3 +14,7 @@ From these controlling entities, the clients shall receive commands to
 #	"plv": "0.1.0",			# payload version, defining the data structure of the payload. Given to be able to avoid faulty payload interpretations
 # Payload version
 #plv: 0.1.0          # Defines the data structure of the payload. Given to be able to avoid faulty payload interpretations
+
+# When datasets are going to be stored on disk, a timestamp shall get added.
+# It shall get inserted between ds_nr and ts_dat, e.g.
+# "time": "2026-01-28 14:36:12" -> is there any other format conceivable besides string?

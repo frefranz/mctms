@@ -7,7 +7,7 @@ this script represents one tmc device (e.g. "tmc0", "tmc1" etc); to run multiple
 models simply start the program several times with different configuration files.
 
 The configuration file format is described in <repo_root>/doc/requirements/tmcm_config_yml.txt
-and the JSON payload layout in <repo_root>/doc/requirements/payload_json.txt.
+and the JSON payload layout in <repo_root>/doc/requirements/payload_json.txt.q
 
 Example invocation::
 
@@ -27,8 +27,9 @@ import sys
 import time
 from typing import Any, Dict, List
 
-# program version follows semantic 3-number scheme
-VERSION = "0.1.0"
+# Version history:
+# VERSION = "0.1.0"   # Initial version
+VERSION   = "0.1.1"   # Updated to reflect payload spec v1.3 (only configured sensors appear, friendly sensor names as keys)
 
 import yaml
 
@@ -98,9 +99,35 @@ class TmcModel:
         if not isinstance(raw_ts_dat, dict):
             raise ValueError("ts_dat section of configuration must be a mapping")
 
+        # payload spec v1.3 (see doc/requirements/payload_json.txt) imposes a
+        # few additional rules:
+        #   * at most eight sensor/value pairs may be present
+        #   * only *configured* sensors appear in the payload
+        #   * keys inside "ts_dat" must be the friendly sensor names (max 8
+        #     characters, no spaces).  if the name is empty we fall back to a
+        #     generated "slotN" identifier to keep the JSON valid.
+        #
+        # enforce sane configuration and normalise the names upfront so the
+        # rest of the code can happily iterate over a well‑formed dict.
+        if len(raw_ts_dat) > 8:
+            raise ValueError("payload may contain a maximum of 8 sensors")
+
+        ts_dat: Dict[str, List[float]] = {}
+        for idx, (name, values) in enumerate(raw_ts_dat.items()):
+            if not isinstance(values, list):
+                raise ValueError(f"sensor '{name}' must be associated with a list of values")
+
+            # generate fallback name if user provided an empty string
+            key = name if name else f"slot{idx}"
+
+            if len(key) > 8 or " " in key:
+                raise ValueError("sensor names must be <=8 chars and contain no spaces")
+
+            ts_dat[key] = values
+
         # create a bank for each requested sensor bank; share the same ts_dat
         # (the sample configuration does not distinguish between banks).
-        self.banks = [SensorBank(raw_ts_dat) for _ in range(self.sb_cnt)]
+        self.banks = [SensorBank(ts_dat) for _ in range(self.sb_cnt)]
 
         # create mqtt client.  the default callback API version (1) is
         # deprecated and triggers a warning; request version 2 explicitly.
@@ -116,6 +143,8 @@ class TmcModel:
         self.mqtt.on_message = on_message
 
         self._stop = False
+
+        # future optional features could be added here
 
     def connect(self) -> None:
         self.mqtt.connect(self.broker_ip, self.broker_port)
@@ -134,7 +163,10 @@ class TmcModel:
             while not self._stop:
                 for sb_nr, bank in enumerate(self.banks):
                     ts_values = bank.next_values()
-                    payload = {
+                    # assemble payload dict; ordering is not critical but keep the
+                    # same sequence as the firmware so that any human reading the
+                    # JSON will see the familiar layout.
+                    payload: Dict[str, Any] = {
                         "client": self.client_name,
                         "sb_nr": sb_nr,
                         "ds_nr": self.ds_nr,
@@ -142,22 +174,9 @@ class TmcModel:
                     }
 
                     topic = f"{self.client_name}/sb{sb_nr}"
-                    msg = json.dumps(payload)
+                    # firmware uses compact JSON without any spaces; mimic that
+                    msg = json.dumps(payload, separators=(',',':'))
                     self.mqtt.publish(topic, msg)
-
-                    # also publish each sensor individually so that someone
-                    # can subscribe to tmcX/sbY/sensorName.  Build a small
-                    # payload that follows the same JSON schema as the
-                    # full bank message, making it easier for clients that
-                    # expect JSON to parse.
-                    for name, value in ts_values.items():
-                        single_payload = {
-                            "client": self.client_name,
-                            "sb_nr": sb_nr,
-                            "ds_nr": self.ds_nr,
-                            "ts_dat": {name: value},
-                        }
-                        self.mqtt.publish(f"{topic}/{name}", json.dumps(single_payload))
 
                     if self.verbose:
                         print(f"[published] {topic} {msg}")

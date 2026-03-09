@@ -17,8 +17,8 @@
     "client": "tmc0",         # Client name
     "sb_nr": 0,               # Sensor bank number
     "ds_nr": 0,               # Data set number, starts with 0 for the first set published and gets incremented with each set
-    "ts_dat":                 # Temperature sensing data follow as friendly-name/value pairs; only configured sensors appear
-    {						  #
+    "ts_dat":                 # Temperature sensing data follow as friendly-name/value pairs; only configured sensors appear,
+    {						  # a maximum of 8 sensor/value pairs can be included in the payload
         "Indoor0": 20.00,     # Name of the first configured sensor in the currrent sensor bank of the client,
         "Indoor1": 21.10,	  # Sensornames can be max. 8 characters long, no space character may be part of the name
         "Outdoor": 22.20,	  # Temperature values are given as signed integers (not enclosed in "" -> no character strings are allowed)
@@ -26,9 +26,6 @@
     }
 }
 
-# When datasets are going to be stored on disk, a timestamp shall get added.
-# It shall get inserted between ds_nr and ts_dat, e.g.
-# "time": "2026-01-28 14:36:12" -> is there any other format conceivable besides string?
 
 # Compactformat:
-{"client":"tmc0","sb_nr":0,"ds_nr":0,"ts_dat":{"Indoor0":20,"Indoor1":21.1,"Outdoor":22.2}}
+{"client":"tmc0","sb_nr":0,"ds_nr":0,"ts_dat":{"Indoor0":20,"Indoor1":21.1,"Outdoor":22.2,"SideRm": 23.30}}

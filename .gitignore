@@ -1,5 +1,6 @@
-# Python virtual environments
+# Python environment
 venv/
+__pycache__
 
 # When working with a MacBook
 *.DS_Store
