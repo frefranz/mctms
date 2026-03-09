@@ -57,6 +57,26 @@ LiquidCrystal_I2C lcd(0x27, 16, 4);  // set the LCD address to 0x27 for the 16 c
 OneWire oneWire(D1);
 
 // ------------------------------------------------------------------
+// build-time configuration ------------------------------------------------
+
+// set to 1 to enable debug printing to Serial; leave undefined or zero for
+// normal operation.  We use a highly specific macro name so that the
+// build system or other libraries don't accidentally turn it on for us.
+// Define APP_DEBUG via the compiler command line (-DAPP_DEBUG=1) or change
+// the value below.
+#ifndef APP_DEBUG
+#define APP_DEBUG 0
+#endif
+
+#if APP_DEBUG
+#define DBG_PRINT(x) Serial.print(x)
+#define DBG_PRINTLN(x) Serial.println(x)
+#else
+#define DBG_PRINT(x)
+#define DBG_PRINTLN(x)
+#endif
+
+// ------------------------------------------------------------------
 // Configuration constants for MQTT and sensor bank handling
 #define CLIENT_NAME "tmc0"      // client identifier used in topics and broker connection
 #define SB_NUMBER 0              // current sensor bank (0 = first bank)
@@ -100,9 +120,9 @@ const char knownNames[][NAME_MAX + 1] = {
   "Outdoor",        // friendly name for slot 2    
   "",               // friendly name for slot 3
   "",               // friendly name for slot 4
-  "Indr 0",         // friendly name for slot 5
-  "Indr 1",         // friendly name for slot 6
-  "Outdr0"          // friendly name for slot 7
+  "Indr_0",         // friendly name for slot 5
+  "Indr_1",         // friendly name for slot 6
+  "Outd_0"          // friendly name for slot 7
 };
 static_assert(sizeof(knownNames) / sizeof(knownNames[0]) == 8, "knownNames must contain exactly 8 entries");
 const size_t KNOWN_SENSORS = sizeof(knownSensors) / sizeof(knownSensors[0]);
@@ -189,6 +209,8 @@ void setup_wifi() {
 
 void callback(char* topic, byte* payload, unsigned int length) {
   // simple message callback: log everything received to the serial monitor
+  // but only when debugging is enabled.
+#if APP_DEBUG
   Serial.print("Msg recv [");
   Serial.print(topic);
   Serial.print("] : ");
@@ -196,6 +218,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.write(payload[i]);
   }
   Serial.println();
+#endif
 }
 
 void reconnect() {
@@ -310,7 +333,7 @@ void setup()
     // never reached: identificationMode loops forever until reset
   }
   lcd.print("MQTT MC-TempM Client");  // Line 0: print a message to the LCD
-  lcd.print("Vers. 2026-02-16    ");  // no cursor repositioning as previous line is fully used
+  lcd.print("Vers. 2026-03-08    ");  // no cursor repositioning as previous line is fully used
   lcd.print("--------------------");
   delay(500);
   lcd.print("Setting up client...");  
@@ -391,7 +414,8 @@ void loop()
       rowcnt++;
     }
     
-    // Simple logging to the Serial Monitor for all slots
+    // Simple logging to the Serial Monitor for all slots (only in debug builds)
+#if APP_DEBUG
     Serial.print("Slot "); Serial.print(i); Serial.print(" ");
     if (knownNames[i] && knownNames[i][0]) { Serial.print(knownNames[i]); Serial.print(" "); }
     if (!configured) {
@@ -401,82 +425,44 @@ void loop()
       if (TempValue[i] != DEVICE_DISCONNECTED_C) Serial.println(TempValue[i]);
       else Serial.println("disconnected");
     }
+#endif
   }
 
 // Loop through all temperature values and assemble a JSON payload string for MQTT
-  // transmission.  Fields are defined in payload_json.txt; names come from the
-  // friendly names array or use the special "not_conf" placeholder when a slot
-  // isn't configured.  While doing so we also gather the individual sensor names
-  // and values so they can be published separately (see Python model behaviour).
+  // transmission.  The payload spec v1.3 requires friendly sensor names as keys
+  // inside "ts_dat"; unconfigured slots are omitted.  If a name is blank we
+  // fall back to a generated "slotN" identifier.
   String payload = "{";
   payload += "\"client\":\"" + String(CLIENT_NAME) + "\",";
   payload += "\"sb_nr\":" + String(SB_NUMBER) + ",";
   payload += "\"ds_nr\":" + String(dataset_nr++) + ",";
   payload += "\"ts_dat\":{";
 
-  // temporary storage for per-sensor understanding
-  String sensorNames[KNOWN_SENSORS];
-  float sensorValues[KNOWN_SENSORS];
-  size_t sensorCount = 0;
-
+  bool firstEntry = true;
   for (size_t i = 0; i < KNOWN_SENSORS; i++) {
-    bool configured = !isAddressZero(knownSensors[i]);
-    String name;
-    float value;
-    if (!configured) {
-      name = "not_conf";
-      value = 0.00;
-    } else {
-      // if friendly name is empty somehow, still treat as not_conf
-      if (knownNames[i][0] == '\0') {
-        name = "not_conf";
-      } else {
-        name = String(knownNames[i]);
-      }
-      if (TempValue[i] == DEVICE_DISCONNECTED_C) {
-        value = 99.99; // configured but no data
-      } else {
-        value = TempValue[i];
-      }
-
-      // remember this sensor for individual publishing
-      sensorNames[sensorCount] = name;
-      sensorValues[sensorCount] = value;
-      sensorCount++;
+    if (!isAddressZero(knownSensors[i])) {
+      // determine key (friendly name or default)
+      String fname = (knownNames[i][0] != '\0') ? String(knownNames[i]) :
+                     String("slot") + String(i);
+      float value = (TempValue[i] == DEVICE_DISCONNECTED_C) ? 99.99 : TempValue[i];
+      if (!firstEntry) payload += ",";
+      payload += "\"" + fname + "\":" + String(value, 2);
+      firstEntry = false;
     }
-
-    payload += "\"" + name + "\":" + String(value, 2);
-    if (i < KNOWN_SENSORS - 1) payload += ",";
   }
 
   payload += "}}";
 
-  // publish bank payload first
+  // publish single JSON blob for the whole bank
   String topic = String(CLIENT_NAME) + "/sb" + String(SB_NUMBER);
   client.publish(topic.c_str(), payload.c_str(), false);
 
-  // then publish each sensor individually using the friendly name topic
-  for (size_t j = 0; j < sensorCount; j++) {
-    String singlePayload = "{";
-    singlePayload += "\"client\":\"" + String(CLIENT_NAME) + "\",";
-    singlePayload += "\"sb_nr\":" + String(SB_NUMBER) + ",";
-    singlePayload += "\"ds_nr\":" + String(dataset_nr - 1) + ","; // same dataset
-    singlePayload += "\"ts_dat\":{";
-    singlePayload += "\"" + sensorNames[j] + "\":" + String(sensorValues[j], 2);
-    singlePayload += "}}";
+  // debugging output; double-guarded in case macros were misconfigured
+#if APP_DEBUG
+  Serial.print("Publish topic: "); Serial.println(topic);
+  Serial.print("Payload: "); Serial.println(payload);
+#endif
 
-    String singleTopic = topic + "/" + sensorNames[j];
-    client.publish(singleTopic.c_str(), singlePayload.c_str(), false);
-
-    if (true) { // always print per-sensor debug for now
-      Serial.print("Publish topic: "); Serial.println(singleTopic);
-      Serial.print("Payload: "); Serial.println(singlePayload);
-    }
-  }
-
-
-
-  // publish via MQTT to topic "<client>/sb<bank>" (tmc = temperature measurement client,
-  // Wait n seconds before starting next measurement cycle
+  // wait n seconds before starting next measurement cycle
   delay(4000);
 }
