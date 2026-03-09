@@ -8,7 +8,10 @@ models simply start the program several times with different configuration files
 
 The configuration file format is described in <repo_root>/doc/requirements/tmcm_config_yml.txt
 and the JSON payload layout in <repo_root>/doc/requirements/payload_json.txt.q
-
+Configuration may either provide a single `ts_dat` mapping reused for every
+sensor bank (legacy behaviour), or – more flexibly – supply separate
+`sb0_tsdat`, `sb1_tsdat`, … sections for each individual bank.  The latter is
+preferred when different banks should generate distinct payloads.
 Example invocation::
 
     python mqtt_tmc_model.py -c my_client.yml
@@ -29,7 +32,8 @@ from typing import Any, Dict, List
 
 # Version history:
 # VERSION = "0.1.0"   # Initial version
-VERSION   = "0.1.1"   # Updated to reflect payload spec v1.3 (only configured sensors appear, friendly sensor names as keys)
+# VERSION = "0.1.1"   # Updated to reflect payload spec v1.3
+VERSION   = "0.1.2"   # Added per‑bank ts_dat support and dropped sb_cnt requirement
 
 import yaml
 
@@ -90,44 +94,52 @@ class TmcModel:
         self.broker_ip = config.get("broker_ip", "localhost")
         self.broker_port = int(config.get("broker_port", 1883))
         self.client_name = config.get("client_name", "tmc0")
-        self.sb_cnt = int(config.get("sb_cnt", 1))
+        # sb_cnt may be implicit when individual sbN_tsdat entries are present
+        self.sb_cnt = int(config.get("sb_cnt", 0))
         self.meas_delay = int(config.get("meas_delay", 2))
         self.ds_nr = int(config.get("ds_nr", 0))
 
-        # expect ts_dat to be a dict of sensor-name -> list of values
-        raw_ts_dat = config.get("ts_dat", {})
-        if not isinstance(raw_ts_dat, dict):
-            raise ValueError("ts_dat section of configuration must be a mapping")
+        def normalize_ts_dat(raw_ts_dat: Dict[str, Any], bank_idx: int) -> Dict[str, List[float]]:
+            if not isinstance(raw_ts_dat, dict):
+                raise ValueError(f"ts_dat for bank {bank_idx} must be a mapping")
 
-        # payload spec v1.3 (see doc/requirements/payload_json.txt) imposes a
-        # few additional rules:
-        #   * at most eight sensor/value pairs may be present
-        #   * only *configured* sensors appear in the payload
-        #   * keys inside "ts_dat" must be the friendly sensor names (max 8
-        #     characters, no spaces).  if the name is empty we fall back to a
-        #     generated "slotN" identifier to keep the JSON valid.
-        #
-        # enforce sane configuration and normalise the names upfront so the
-        # rest of the code can happily iterate over a well‑formed dict.
-        if len(raw_ts_dat) > 8:
-            raise ValueError("payload may contain a maximum of 8 sensors")
+            if len(raw_ts_dat) > 8:
+                raise ValueError("payload may contain a maximum of 8 sensors")
 
-        ts_dat: Dict[str, List[float]] = {}
-        for idx, (name, values) in enumerate(raw_ts_dat.items()):
-            if not isinstance(values, list):
-                raise ValueError(f"sensor '{name}' must be associated with a list of values")
+            ts_dat: Dict[str, List[float]] = {}
+            for idx, (name, values) in enumerate(raw_ts_dat.items()):
+                if not isinstance(values, list):
+                    raise ValueError(f"sensor '{name}' must be associated with a list of values")
 
-            # generate fallback name if user provided an empty string
-            key = name if name else f"slot{idx}"
+                key = name if name else f"slot{idx}"
+                if len(key) > 8 or " " in key:
+                    raise ValueError("sensor names must be <=8 chars and contain no spaces")
+                ts_dat[key] = values
+            return ts_dat
 
-            if len(key) > 8 or " " in key:
-                raise ValueError("sensor names must be <=8 chars and contain no spaces")
+        # determine bank datasets.  legacy behaviour: single ts_dat + sb_cnt.
+        banks_data: List[Dict[str, List[float]]] = []
+        if "ts_dat" in config:
+            raw_ts_dat = config["ts_dat"]
+            if self.sb_cnt <= 0:
+                self.sb_cnt = 1
+            normalized = normalize_ts_dat(raw_ts_dat, 0)
+            banks_data = [normalized for _ in range(self.sb_cnt)]
+        else:
+            # look for explicit sections named sb<N>_tsdat
+            idx = 0
+            while True:
+                key = f"sb{idx}_tsdat"
+                if key not in config:
+                    break
+                banks_data.append(normalize_ts_dat(config[key], idx))
+                idx += 1
+            self.sb_cnt = len(banks_data)
 
-            ts_dat[key] = values
+        if self.sb_cnt == 0:
+            raise ValueError("no sensor bank data found in configuration")
 
-        # create a bank for each requested sensor bank; share the same ts_dat
-        # (the sample configuration does not distinguish between banks).
-        self.banks = [SensorBank(ts_dat) for _ in range(self.sb_cnt)]
+        self.banks = [SensorBank(data) for data in banks_data]
 
         # create mqtt client.  the default callback API version (1) is
         # deprecated and triggers a warning; request version 2 explicitly.

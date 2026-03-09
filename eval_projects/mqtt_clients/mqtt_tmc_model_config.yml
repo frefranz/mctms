@@ -6,15 +6,17 @@ broker_port: 1883
 
 # Client configuration
 client_name: tmc1
-sb_cnt: 2
 meas_delay: 4
 
 # Payload configuration
-ds_nr: 0
-# with every measurement, the next value in the list is used, the list repeats when the end is reached
+ds_nr: 0    # Dataset counter, increments with every measurement, wraps around when the end is reached
 
-# the example below uses a short set for demonstration (Outdoor0 repeats earlier, as only 4 values are given)
-ts_dat:
+#  Define per-bank sensor data by creating sections named sb0_tsdat, sb1_tsdat, …
+#  Uncomment entire bank to exclude it from the payload, or comment out individual sensors to exclude them from the payload
+#  the example below uses a short set for demonstration (Outdoor0 repeats earlier: only 4 values are given)
+#
+#  Sensor data for sensor bank 0:
+sb0_tsdat:
   "Indoor0": [20.00, 20.10, 20.20, 20.30, 20.40]
   "Indoor1": [21.90, 21.80, 21.70, 21.60, 21.50]
   "Outdoor0": [22.00, 22.10, 22.20, 22.30]
@@ -23,3 +25,14 @@ ts_dat:
 #  "Sensor5": [25.90, 25.80, 25.70, 25.60, 25.50]
 #  "Sensor6": [26.00, 26.10, 26.20, 26.30, 26.40]
   "Sensor7": [27.90, 27.80, 27.70, 27.60, 27.50]
+
+#  Sensor data for sensor bank 1:
+# sb1_tsdat:
+#   "Indoor3": [20.00, 20.10, 20.20, 20.30, 20.40]
+#   "Indoor4": [21.90, 21.80, 21.70, 21.60, 21.50]
+#   "Outdoor1": [22.00, 22.10, 22.20, 22.30]
+#   "Sensor3": [23.90, 23.80, 23.70, 23.60, 23.50]
+#   "Sensor4": [24.00, 24.10, 24.20, 24.30, 24.40]
+#   "Sensor5": [25.90, 25.80, 25.70, 25.60, 25.50]
+#   "Sensor6": [26.00, 26.10, 26.20, 26.30, 26.40]
+#   "Sensor7": [27.90, 27.80, 27.70, 27.60, 27.50]
