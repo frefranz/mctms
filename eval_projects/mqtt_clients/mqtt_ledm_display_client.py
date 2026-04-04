@@ -141,10 +141,14 @@ class LEDMDisplay:
         text2 = f"{self.key2.split('/')[-1]}: {self.current_values[self.key2]}"
         # positions
         x = 1
-        y1 = 24
-        y2 = 48
-        graphics.DrawText(self.canvas, self.font, x, y1, self.color, text1)
-        graphics.DrawText(self.canvas, self.font, x, y2, self.color, text2)
+        y0 = 13
+        y1 = 25
+        y2 = 42
+        y3 = 54
+        graphics.DrawText(self.canvas, self.font, x, y0, self.color, "tms-")
+        graphics.DrawText(self.canvas, self.font, x, y1, self.color, "  monitor")
+        graphics.DrawText(self.canvas, self.font, x, y2, self.color, text1)
+        graphics.DrawText(self.canvas, self.font, x, y3, self.color, text2)
         self.matrix.SwapOnVSync(self.canvas)
 
     def start(self):
@@ -219,4 +223,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

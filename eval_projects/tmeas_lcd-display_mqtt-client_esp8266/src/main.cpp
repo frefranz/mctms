@@ -115,9 +115,9 @@ DeviceAddress knownSensors[] = {
 constexpr size_t NAME_MAX = 8;
 // Each entry holds up to NAME_MAX characters plus terminating '\0'.
 const char knownNames[][NAME_MAX + 1] = {
-  "Indoor0",        // friendly name for slot 0
-  "Indoor1",        // friendly name for slot 1
-  "Outdoor",        // friendly name for slot 2    
+  "ID",             // friendly name for slot 0
+  "ID1",            // friendly name for slot 1
+  "OD",             // friendly name for slot 2
   "",               // friendly name for slot 3
   "",               // friendly name for slot 4
   "Indr_0",         // friendly name for slot 5
