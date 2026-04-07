@@ -1,0 +1,12 @@
+To-Do List
+==========
+
+Split networks:
+- all mqtt devices shall be connected to a separate network
+- Broker-Raspi:
+  - shall act as a hotspot and provide a WLAN for all the MQTT devices connected to its broker
+  - with a second WLAN connection provided through an USB WLAN stick, the Raspi shall connect itself to the "normal", non-MQTT, WLAN network
+  
+  Update Recording Client
+  
+  

@@ -2,9 +2,14 @@
 # They may be added to the requirements specification at a later point in time (or not at all,
 # if they are deemed not relevant for the project).
 
-Establish a command and response structure for the MQTT communication between the temperature measurement clients and the controlling entities.
-Controlling entities may be a central server, a local gateway, or any other entity that needs to receive the temperature sensing data from the clients.
+--------------------------------------------------------
+Command and response
+Establish a command and response structure for the MQTT communication between the controlling entities and the temperature measurement clients.
+Controlling entities may be a central server, a local gateway, or any other entity that needs to interact with the temperature measurement clients.
+The controlling entities may have a need to set sensing properties on the temperature measurement clients, therefore a command and response structure is needed
+
 More details in the controlling entities to be defined.
+---------------------------------------------------------
 
 The temperature measurement clients shall subscribe to all controlling entities automatically after startup.
 From these controlling entities, the clients shall receive commands to
