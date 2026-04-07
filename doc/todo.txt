@@ -1,0 +1,25 @@
+To-Do List
+==========
+
+Split networks:
+- all mqtt devices shall be connected to a separate network
+- Broker-Raspi:
+  - shall act as a hotspot and provide a WLAN for all the MQTT devices connected to its broker
+  - with a second WLAN connection provided through an USB WLAN stick, the Raspi shall connect itself to the "normal", non-MQTT, WLAN network
+  
+Update Recording Client
+- have it configurable, so that it can get selected which temp sensors to track
+
+Enable a 2nd sensor bank on hardware
+
+Repo Maintenance
+Create a folder in the repo for the final product
+- e.g. main_project
+- move docs folder into eval_projects
+- copy docs folder into main_project (now we have two separate docs folder)
+
+
+
+Write General Documentation
+  
+  
