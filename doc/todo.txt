@@ -10,6 +10,8 @@ Split networks:
 Update Recording Client
 - have it configurable, so that it can get selected which temp sensors to track
 
+Introduce a sensor specific offset value to compensate differences between sensors. The offset shall be a simple adder to the value measured. The offset value per sensor shall get stored within the code as a constant
+
 Enable a 2nd sensor bank on hardware
 
 Repo Maintenance
