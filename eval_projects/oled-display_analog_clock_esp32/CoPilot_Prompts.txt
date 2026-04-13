@@ -1,0 +1,33 @@
+---------------------------------------------------------------------------------------------------------
+I am using an OLED display (SSD1309 128x64 OLED Display Module).
+See also the amazon link https://www.amazon.de/dp/B0CJY3VS12?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1
+
+I want to implement an analog clock that shows a round shaped analog clock watchface with hour- minutes and seconds hands
+A one pixel thick frame shall be drawn around the display prior to drawing the analog watch face. within that frame, the watch face shall keep one pixel distance from the frame.
+In the first step, the clock shall start at 0:00 am (in the next step it shall fetch the time from the internet)
+
+Great, it works!
+Can you add some code so that the clock is set by an internet based clock service and synchronizes every 10 Minutes with that service?
+
+I forgot to mention the right time zone: it is Zeitzone Europe/Berlin
+
+The clock works very well!
+I am seeing that left and right from the watchface there is ample space. If the watchface would get shifted to the left (but also keeping one empty pixel distance from the left frame-line), then on the right side there would be enough space for displaying the day of the week, the day of the month, the month and the year.
+I would like to have this display centered (up/down left right) and written in German language:
+First line: day of the week (Montag, Dienstag, Mittwoch etc.)
+Second Line: day of the month (1 to 31) with a "." at the end, e.g. 31. or 15.
+Third Line: the month (Januar, Februar, März, April etc.). Please note the German umlauts like "ä" in März when selecting the Character Set
+Fourth Line: the year (2026, 2027 etc.)
+Can you do that?
+
+The clock works quite well now!
+What I'd like to see additionally, is some text upfront right before the clock is drawn.
+I think it would be great if a splash screen could get displayed, like
+Line 1: Analog OLED Clock
+Line 2: Vers. 2026-04-13
+Line 3: Connecting to
+Line 4: SSID "Datenschleuder"
+Line 5: Dots shall get printed for each connection attempt
+
+After 20 dots, line 5 shall be redrawn, connection attempts shall continue.
+Timeout: a timeout when no internet connection can  get established makes no sense as the actual time remains unkown and displaying a random time or starting at 0:00 does not make much sense either. So connection attempts shall get carried out forever.

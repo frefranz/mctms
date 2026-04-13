@@ -7,8 +7,8 @@
 // Credentials and sensitive data handling:
 //   copy secrets_template.h to secrets.h and fill in your WiFi and MQTT credentials
 //   Note: secrets.h not seen publicly as it contains sensitive data (protected by .gitignore)
-#include "../include/secrets_template.h"
-//#include "../include/secrets.h"
+//#include "../include/secrets_template.h"
+#include "../include/secrets.h"
 
 const char* ntpServer = "pool.ntp.org";
 const int NTP_PACKET_SIZE = 48;
@@ -21,15 +21,20 @@ unsigned long currentTimeSeconds = 0;
 unsigned long lastMillis = 0;
 unsigned long lastSyncMillis = 0;
 bool timeSynced = false;
+struct tm currentTime;
 
 // I2C OLED display for SSD1309 / SSD1306 128x64 modules
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
 static const int DISPLAY_WIDTH = 128;
 static const int DISPLAY_HEIGHT = 64;
-static const int CLOCK_CENTER_X = DISPLAY_WIDTH / 2;
+static const int CLOCK_CENTER_X = 33; // shifted left, keeping 1 pixel from left frame (center 32, radius 29, left at 3)
+
 static const int CLOCK_CENTER_Y = DISPLAY_HEIGHT / 2;
 static const int CLOCK_RADIUS = 29; // keep one pixel distance from the frame
+
+const char* weekdays[] = {"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"};
+const char* months[] = {"Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"};
 
 void drawClockFace() {
   u8g2.drawFrame(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
@@ -61,6 +66,28 @@ void drawAnalogClock(int hours, int minutes, int seconds) {
   drawHand(minuteAngle, 26);
   drawHand(secondAngle, 28);
   u8g2.drawDisc(CLOCK_CENTER_X, CLOCK_CENTER_Y, 1);
+
+  // Draw date on the right side
+  u8g2.setFont(u8g2_font_helvR08_tf); // font with umlauts
+  int textX = 94; // center of right area
+  u8g2.setFontMode(0); // transparent
+  u8g2.setDrawColor(1);
+
+  // Weekday
+  u8g2.drawStr(textX - u8g2.getStrWidth(weekdays[currentTime.tm_wday]) / 2, 17, weekdays[currentTime.tm_wday]);
+
+  // Day
+  char dayStr[4];
+  sprintf(dayStr, "%d.", currentTime.tm_mday);
+  u8g2.drawStr(textX - u8g2.getStrWidth(dayStr) / 2, 29, dayStr);
+
+  // Month
+  u8g2.drawStr(textX - u8g2.getStrWidth(months[currentTime.tm_mon]) / 2, 41, months[currentTime.tm_mon]);
+
+  // Year
+  char yearStr[5];
+  sprintf(yearStr, "%d", currentTime.tm_year + 1900);
+  u8g2.drawStr(textX - u8g2.getStrWidth(yearStr) / 2, 53, yearStr);
 }
 
 static int dayOfWeek(int year, int month, int day) {
@@ -168,6 +195,8 @@ bool syncTime() {
       unsigned long epoch = secsSince1900 - seventyYears;
       unsigned long localEpoch = epoch + CET_OFFSET_SEC + (isBerlinDST(epoch) ? CET_OFFSET_SEC : 0);
       currentTimeSeconds = localEpoch;
+      time_t t = localEpoch;
+      localtime_r(&t, &currentTime);
       lastMillis = millis();
       timeSynced = true;
       udp.stop();
@@ -186,8 +215,50 @@ void setup() {
   u8g2.clearBuffer();
   u8g2.sendBuffer();
 
-  WiFi.mode(WIFI_STA);
-  syncTime();
+  // Display startup screen
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_helvR08_tf);
+  const char* splashLine1 = "Analog OLED Clock";
+  const char* splashLine2 = "Vers. 2026-04-13";
+  const char* splashLine3 = "Connecting to";
+  char splashLine4[100];
+  sprintf(splashLine4, "SSID \"%s\"", ssid);
+  u8g2.drawStr(5, 12, splashLine1);
+  u8g2.drawStr(5, 22, splashLine2);
+  u8g2.drawStr(5, 32, splashLine3);
+  u8g2.drawStr(5, 42, splashLine4);
+  u8g2.sendBuffer();
+
+  // Try to sync time
+  int dotCount = 0;
+  unsigned long lastAttempt = 0;
+  while (!timeSynced) {
+    unsigned long now = millis();
+    if (now - lastAttempt > 2000) { // try every 2 seconds
+      if (syncTime()) {
+        break;
+      }
+      lastAttempt = now;
+      dotCount++;
+      if (dotCount > 20) dotCount = 0;
+
+      // Redraw connection status
+      u8g2.clearBuffer();
+      u8g2.drawStr(5, 12, splashLine1);
+      u8g2.drawStr(5, 22, splashLine2);
+      u8g2.drawStr(5, 32, splashLine3);
+      sprintf(splashLine4, "SSID \"%s\"", ssid);
+      u8g2.drawStr(5, 42, splashLine4);
+      // Dots on line 5
+      char dots[25] = "";
+      for (int i = 0; i < dotCount; i++) {
+        strcat(dots, ".");
+      }
+      u8g2.drawStr(5, 52, dots);
+      u8g2.sendBuffer();
+    }
+  }
+
   lastSyncMillis = millis();
   lastMillis = millis();
 }
