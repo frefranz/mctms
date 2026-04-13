@@ -4,8 +4,12 @@
 #include <U8g2lib.h>
 #include <time.h>
 
-const char* ssid = "-----------";
-const char* password = "----------";
+// Credentials and sensitive data handling:
+//   copy secrets_template.h to secrets.h and fill in your WiFi and MQTT credentials
+//   Note: secrets.h not seen publicly as it contains sensitive data (protected by .gitignore)
+#include "../include/secrets_template.h"
+//#include "../include/secrets.h"
+
 const char* ntpServer = "pool.ntp.org";
 const int NTP_PACKET_SIZE = 48;
 const unsigned long SYNC_INTERVAL_MS = 10UL * 60UL * 1000UL;
