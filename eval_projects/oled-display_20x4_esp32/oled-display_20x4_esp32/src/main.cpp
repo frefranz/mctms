@@ -30,6 +30,13 @@ public:
     // No backlight control on the OLED; keep compatibility with LCD code.
   }
 
+  void clearLine(uint8_t row) {
+    if (row < ROWS) {
+      lines[row] = "";
+      dirty = true;
+    }
+  }
+
   void setCursor(uint8_t col, uint8_t row) {
     cursorCol = min(col, (uint8_t)(COLS - 1));
     cursorRow = min(row, (uint8_t)(ROWS - 1));
@@ -124,8 +131,8 @@ void loop() {
   lcd.setCursor(0, 3);
   lcd.print("Uptime: ");
   lcd.print(millis() / 1000);
-  lcd.print("s   ");
+  lcd.print("s");
   lcd.sendBuffer();
 
-  //delay(100);
+  delay(500);
 }
