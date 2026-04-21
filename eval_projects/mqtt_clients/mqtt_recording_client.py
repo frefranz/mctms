@@ -13,8 +13,8 @@ import os
 # Configuration
 BROKER_ADDRESS = "192.168.2.32"
 BROKER_PORT = 1883
-SUBSCRIBE_TOPIC = "tmc01/sb01"  # Wildcard for all temperature sensors
-#SUBSCRIBE_TOPIC = "#"  # Wildcard for all temperature sensors
+#SUBSCRIBE_TOPIC = "tmc01/sb01"  # Wildcard for all temperature sensors
+SUBSCRIBE_TOPIC = "#"  # Wildcard for all temperature sensors
 OUTPUT_FILE = "temperature_data.jsonl"
 
 # Global variables

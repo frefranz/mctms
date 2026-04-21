@@ -1,0 +1,29 @@
+Modelled Temperature Measurement Client
+
+In order to be able to test the mqtt environment (e.g. increased MQTT message load, fully populated sensorbanks etc.),
+a model of a temperature measurement clients shall get implemented.
+
+The modelled client shall get implemented in Python, the filename shall be mqtt_tmc_model.py
+
+In order to be able to run several instances of the modelled client, the modelled client shall be configurable through a configuration file.
+
+The configuration file shall be formatted in yaml.
+
+A sample configuration file is shown in tmcm_config_yml.txt
+
+The configuration file shall be read by the modelled client when it is started.
+
+After reading the configuration file, the modelled client shall publish the temperature sensing data according to the configuration file.
+
+The sonsor identification mode (display individual physical sensor address) of the esp8266 SBC firmware does not need to get modelled
+
+The payload shall be structured in JSON as defined in payload_json.txt
+
+The exact same MQTT functionality as in the esp8266 SBC firmware shall get provided
+
+The sensordata published shall change with each message published as described in tmc_model_config_yml.txt
+
+The modelled client shall support graceful shutdown with ctrl+c, so that the client can be stopped without killing the process or truncating messages being sent.
+
+
+
